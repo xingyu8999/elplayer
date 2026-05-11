@@ -1,0 +1,4023 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#050816" />
+  <meta name="author" content="马星煜" />
+  <meta name="description" content="Elplayer 是由马星煜开发制作的透明浮动歌词多媒体播放器，支持本地音频、视频、LRC 歌词与 SRT/VTT 字幕。" />
+  <title>Elplayer · Floating Lyrics Multimedia Player · v5.3.4</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg0: #030712;
+      --bg1: #0f172a;
+      --text: rgba(255,255,255,.94);
+      --soft: rgba(255,255,255,.68);
+      --faint: rgba(255,255,255,.42);
+      --line: rgba(255,255,255,.14);
+      --glass: rgba(255,255,255,.112);
+      --glass-2: rgba(255,255,255,.18);
+      --blur: 32px;
+      --accent: 210 100% 82%;
+      --accent-solid: hsl(var(--accent));
+      --accent-soft: hsla(var(--accent) / .22);
+      --lyric-size: clamp(32px, 6vw, 88px);
+      --lyric-weight: 760;
+      --lyric-current: rgba(255,255,255,.98);
+      --lyric-near: rgba(255,255,255,.58);
+      --lyric-muted: rgba(255,255,255,.34);
+      --lyric-past: rgba(255,255,255,.22);
+      --lyric-glow: hsla(var(--accent) / .18);
+      --panel: 396px;
+      --player-h: 152px;
+      --ambient: .88;
+      --radius-xl: 34px;
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --shadow: 0 34px 120px rgba(0,0,0,.48);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 18%, hsla(258,100%,75%,calc(.42 * var(--ambient))), transparent 32%),
+        radial-gradient(circle at 78% 22%, hsla(197,100%,70%,calc(.34 * var(--ambient))), transparent 34%),
+        radial-gradient(circle at 62% 86%, hsla(333,100%,72%,calc(.30 * var(--ambient))), transparent 38%),
+        linear-gradient(135deg, var(--bg1), var(--bg0) 72%);
+      overflow: hidden;
+      user-select: none;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,.032) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.032) 1px, transparent 1px);
+      background-size: 58px 58px;
+      mask-image: radial-gradient(circle at center, black, transparent 78%);
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at var(--mx, 62%) var(--my, 42%), hsla(var(--accent) / .12), transparent 34%);
+      mix-blend-mode: screen;
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button { color: inherit; }
+
+    .app {
+      width: 100vw;
+      height: 100vh;
+      display: grid;
+      grid-template-columns: var(--panel) minmax(0, 1fr);
+      gap: 22px;
+      padding: 22px;
+      position: relative;
+    }
+
+    .glass {
+      background: linear-gradient(180deg, rgba(255,255,255,.145), rgba(255,255,255,.082));
+      border: 1px solid rgba(255,255,255,.22);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(var(--blur)) saturate(1.45);
+      -webkit-backdrop-filter: blur(var(--blur)) saturate(1.45);
+    }
+
+    .panel {
+      border-radius: var(--radius-xl);
+      display: grid;
+      grid-template-rows: auto auto auto minmax(120px,1fr) auto;
+      gap: 14px;
+      padding: 20px;
+      min-height: 0;
+      overflow: hidden;
+      z-index: 5;
+    }
+
+    .brand {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: start;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 25px;
+      line-height: 1;
+      letter-spacing: -.055em;
+      font-weight: 840;
+      white-space: nowrap;
+    }
+    .brand p {
+      margin: 8px 0 0;
+      color: var(--soft);
+      font-size: 13px;
+      line-height: 1.35;
+      letter-spacing: .02em;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.09);
+      color: rgba(255,255,255,.75);
+      padding: 7px 10px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .pill.dot::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent-solid);
+      box-shadow: 0 0 18px hsla(var(--accent) / .9);
+    }
+
+
+    .domain-link {
+      color: rgba(255,255,255,.82);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255,255,255,.22);
+      transition: color .18s ease, border-color .18s ease;
+    }
+    .domain-link:hover {
+      color: #fff;
+      border-color: rgba(255,255,255,.58);
+    }
+
+    #versionPill {
+      position: relative;
+      cursor: pointer;
+      outline: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #versionPill::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      right: 0;
+      top: calc(100% + 12px);
+      width: max-content;
+      max-width: min(280px, 72vw);
+      padding: 11px 13px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.20);
+      background: rgba(9, 14, 28, .72);
+      color: rgba(255,255,255,.90);
+      box-shadow: 0 18px 46px rgba(0,0,0,.34);
+      backdrop-filter: blur(22px) saturate(1.35);
+      -webkit-backdrop-filter: blur(22px) saturate(1.35);
+      font-size: 12px;
+      line-height: 1.45;
+      letter-spacing: -.01em;
+      white-space: normal;
+      opacity: 0;
+      transform: translateY(-4px) scale(.98);
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 30;
+    }
+    #versionPill:hover::after,
+    #versionPill:focus-visible::after {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .about-card {
+      width: min(640px, 100%);
+      padding: 0;
+      overflow: hidden;
+      max-height: min(86vh, 760px);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+    .about-hero {
+      position: relative;
+      padding: 26px 24px 20px;
+      display: grid;
+      gap: 14px;
+      background:
+        radial-gradient(circle at 22% 14%, hsla(var(--accent) / .30), transparent 42%),
+        linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+      border-bottom: 1px solid rgba(255,255,255,.16);
+    }
+    .about-kicker {
+      width: max-content;
+      max-width: 100%;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      border-radius: 999px;
+      padding: 7px 10px;
+      color: rgba(255,255,255,.72);
+      font-size: 12px;
+      letter-spacing: -.01em;
+    }
+    .about-title {
+      margin: 0;
+      font-size: clamp(30px, 5vw, 48px);
+      line-height: .94;
+      letter-spacing: -.065em;
+      color: rgba(255,255,255,.96);
+    }
+    .about-meta {
+      display: grid;
+      gap: 7px;
+      color: rgba(255,255,255,.70);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .about-meta strong {
+      color: rgba(255,255,255,.94);
+      font-weight: 650;
+    }
+    .about-link {
+      color: rgba(255,255,255,.92);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255,255,255,.28);
+      width: max-content;
+    }
+    .about-link:hover { border-color: rgba(255,255,255,.72); }
+    .about-body {
+      padding: 20px 24px 22px;
+      display: grid;
+      gap: 15px;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+    .about-body::-webkit-scrollbar { width: 8px; }
+    .about-body::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,.18);
+      border-radius: 999px;
+    }
+    .about-body p {
+      color: rgba(255,255,255,.70);
+      font-size: 13px;
+      line-height: 1.72;
+      margin: 0;
+    }
+    .about-body .lead {
+      color: rgba(255,255,255,.86);
+      font-size: 14px;
+      line-height: 1.78;
+    }
+    .manual-author-mini {
+      color: rgba(255,255,255,.76);
+      font-size: 12.5px;
+      line-height: 1.7;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 16px;
+      background: rgba(255,255,255,.055);
+    }
+    .manual-author-mini strong {
+      color: rgba(255,255,255,.92);
+      font-weight: 680;
+    }
+    .about-section-title {
+      margin-top: 2px;
+      color: rgba(255,255,255,.92);
+      font-size: 13px;
+      font-weight: 680;
+      letter-spacing: .08em;
+    }
+    .about-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: -2px;
+    }
+    .about-tags span {
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+      color: rgba(255,255,255,.68);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .about-contact {
+      display: grid;
+      gap: 9px;
+      padding: 13px;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.045));
+    }
+    .about-mail {
+      width: max-content;
+      border: 1px solid rgba(255,255,255,.20);
+      font: inherit;
+      cursor: pointer;
+      max-width: 100%;
+      color: rgba(255,255,255,.94);
+      text-decoration: none;
+      border-radius: 999px;
+      padding: 9px 12px;
+      background: rgba(255,255,255,.10);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+      transition: transform .18s ease, background .18s ease, border-color .18s ease;
+      overflow-wrap: anywhere;
+    }
+    .about-mail:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.16);
+      border-color: rgba(255,255,255,.34);
+    }
+
+    .usage-block {
+      display: grid;
+      gap: 9px;
+      padding: 13px 14px;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(255,255,255,.085), rgba(255,255,255,.038));
+    }
+    .usage-block strong {
+      color: rgba(255,255,255,.92);
+      font-size: 13px;
+      letter-spacing: .04em;
+    }
+    .usage-list {
+      margin: 0;
+      padding-left: 18px;
+      color: rgba(255,255,255,.68);
+      font-size: 13px;
+      line-height: 1.72;
+    }
+    .usage-list li { margin: 3px 0; }
+    .usage-list em {
+      color: rgba(255,255,255,.88);
+      font-style: normal;
+    }
+    .kbd-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .kbd-row span {
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.075);
+      color: rgba(255,255,255,.72);
+      border-radius: 999px;
+      padding: 6px 9px;
+      font-size: 12px;
+    }
+
+    .about-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 2px;
+    }
+    .about-note {
+      color: rgba(255,255,255,.42);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .manual-card .about-title {
+      letter-spacing: -.055em;
+    }
+    .manual-meta {
+      align-items: center;
+    }
+    .game-modal {
+      z-index: 70;
+      background:
+        radial-gradient(circle at 50% 28%, hsla(var(--accent) / .18), transparent 36%),
+        rgba(0,0,0,.56);
+    }
+    .mole-card {
+      width: min(620px, 100%);
+      padding: 22px;
+      gap: 16px;
+      overflow: hidden;
+    }
+    .mole-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .mole-head h2 {
+      margin: 4px 0 8px;
+      font-size: clamp(28px, 5vw, 46px);
+      letter-spacing: -.07em;
+      line-height: .95;
+    }
+    .mole-close {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      color: rgba(255,255,255,.86);
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+    }
+    .mole-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .mole-stats span {
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.075);
+      border-radius: 18px;
+      padding: 10px 12px;
+      color: rgba(255,255,255,.58);
+      font-size: 12px;
+    }
+    .mole-stats strong {
+      display: block;
+      margin-top: 3px;
+      color: rgba(255,255,255,.95);
+      font-size: 22px;
+      letter-spacing: -.04em;
+    }
+    .mole-board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(74px, 1fr));
+      gap: 12px;
+      padding: 12px;
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,.12);
+      background:
+        radial-gradient(circle at 50% 0%, hsla(var(--accent) / .14), transparent 38%),
+        rgba(0,0,0,.16);
+    }
+    .mole-hole {
+      position: relative;
+      aspect-ratio: 1 / .82;
+      border: 0;
+      border-radius: 50%;
+      cursor: pointer;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% 68%, rgba(0,0,0,.55), rgba(0,0,0,.28) 52%, rgba(255,255,255,.08) 55%, rgba(255,255,255,.03) 70%);
+      box-shadow:
+        inset 0 12px 28px rgba(0,0,0,.46),
+        inset 0 -6px 12px rgba(255,255,255,.05);
+    }
+    .mole-hole::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -72%;
+      width: 58%;
+      aspect-ratio: 1;
+      border-radius: 48% 48% 42% 42%;
+      background:
+        radial-gradient(circle at 36% 38%, #fff 0 5%, transparent 6%),
+        radial-gradient(circle at 64% 38%, #fff 0 5%, transparent 6%),
+        radial-gradient(circle at 36% 39%, #111827 0 2.4%, transparent 3%),
+        radial-gradient(circle at 64% 39%, #111827 0 2.4%, transparent 3%),
+        radial-gradient(circle at 50% 58%, rgba(0,0,0,.45) 0 5%, transparent 6%),
+        linear-gradient(160deg, hsl(var(--accent) / .92), rgba(255,255,255,.72));
+      box-shadow: 0 12px 28px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.62);
+      transform: translateX(-50%) translateY(20%) scale(.86);
+      transition: bottom .18s ease, transform .18s ease;
+    }
+    .mole-hole.active::before {
+      bottom: 14%;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+    .mole-hole.hit::before {
+      transform: translateX(-50%) translateY(8%) scale(.92) rotate(-8deg);
+      filter: brightness(1.16);
+    }
+    .mole-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      color: rgba(255,255,255,.62);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    @media (max-width: 560px) {
+      .mole-stats { grid-template-columns: 1fr; }
+      .mole-board { gap: 8px; padding: 8px; }
+      .mole-footer { align-items: stretch; flex-direction: column; }
+    }
+
+    .app.maxingyu-mode {
+      --accent: 214 100% 86%;
+    }
+    .app.maxingyu-mode::after {
+      content: "maxingyu.cn";
+      position: fixed;
+      right: 24px;
+      bottom: 20px;
+      z-index: 6;
+      pointer-events: none;
+      color: rgba(255,255,255,.22);
+      font-size: clamp(12px, 1.8vw, 18px);
+      letter-spacing: .08em;
+      text-transform: lowercase;
+      text-shadow: 0 0 24px hsla(var(--accent) / .34);
+      animation: signatureBreath 4.8s ease-in-out infinite;
+    }
+    .app.maxingyu-mode .stage::before {
+      opacity: .98;
+      filter: saturate(1.16);
+    }
+    .app.maxingyu-mode .lyric-space {
+      box-shadow:
+        0 34px 120px rgba(0,0,0,.38),
+        0 0 90px hsla(var(--accent) / .24),
+        inset 0 1px 0 rgba(255,255,255,.28);
+    }
+    .app.maxingyu-mode .active-line {
+      text-shadow:
+        0 0 28px hsla(var(--accent) / .36),
+        0 0 64px rgba(255,255,255,.16);
+    }
+    @keyframes signatureBreath {
+      0%, 100% { opacity: .48; transform: translateY(0); }
+      50% { opacity: .86; transform: translateY(-4px); }
+    }
+
+
+    .drop {
+      position: relative;
+      display: grid;
+      gap: 11px;
+      padding: 15px;
+      border-radius: var(--radius-lg);
+      border: 1px dashed rgba(255,255,255,.28);
+      background:
+        radial-gradient(circle at 12% 10%, var(--accent-soft), transparent 34%),
+        rgba(255,255,255,.065);
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+    .drop.dragging,
+    .drop:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,.48);
+      background:
+        radial-gradient(circle at 12% 10%, hsla(var(--accent) / .34), transparent 38%),
+        rgba(255,255,255,.105);
+    }
+    .drop-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .drop strong { font-size: 14px; letter-spacing: -.02em; }
+    .drop small { color: var(--soft); font-size: 12px; line-height: 1.5; }
+    .drop-actions, .tools-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tools-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+
+    .btn, .file-btn, .icon, .seg button {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.095);
+      color: var(--text);
+      cursor: pointer;
+      transition: transform .16s ease, background .16s ease, border-color .16s ease, opacity .16s ease;
+    }
+    .btn, .file-btn {
+      min-height: 38px;
+      border-radius: 15px;
+      padding: 9px 11px;
+      text-align: center;
+      font-size: 13px;
+    }
+    .btn:hover, .file-btn:hover, .icon:hover, .seg button:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.16);
+      border-color: rgba(255,255,255,.26);
+    }
+    .btn.active, .seg button.active {
+      background: rgba(255,255,255,.22);
+      border-color: rgba(255,255,255,.32);
+    }
+    .file-input { display: none; }
+
+    .search {
+      position: relative;
+    }
+    .search input {
+      width: 100%;
+      height: 39px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      outline: none;
+      padding: 0 12px 0 36px;
+    }
+    .search::before {
+      content: "⌕";
+      position: absolute;
+      left: 13px;
+      top: 8px;
+      color: var(--faint);
+    }
+
+    .playlist {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 9px;
+      padding-right: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.28) transparent;
+    }
+    .track, .empty-card {
+      width: 100%;
+      border-radius: 17px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.075);
+    }
+    .track {
+      display: grid;
+      grid-template-columns: 31px minmax(0,1fr) auto auto auto;
+      gap: 8px;
+      align-items: center;
+      padding: 10px;
+      cursor: pointer;
+      color: var(--text);
+      text-align: left;
+      outline: none;
+    }
+    .track.active {
+      background: linear-gradient(135deg, hsla(var(--accent) / .22), rgba(255,255,255,.105));
+      border-color: hsla(var(--accent) / .42);
+    }
+    .kind {
+      width: 31px;
+      height: 31px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.1);
+      color: rgba(255,255,255,.78);
+      font-size: 12px;
+    }
+    .t-name { min-width: 0; }
+    .t-name strong, .t-name small {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .t-name strong { font-size: 13px; letter-spacing: -.02em; }
+    .t-name small { margin-top: 3px; color: var(--faint); font-size: 11px; }
+    .chip {
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      padding: 5px 7px;
+      color: var(--soft);
+      font-size: 11px;
+      background: rgba(255,255,255,.07);
+      white-space: nowrap;
+    }
+    .lyric-action {
+      border: 1px solid hsla(var(--accent) / .30);
+      border-radius: 999px;
+      padding: 5px 8px;
+      color: rgba(255,255,255,.86);
+      font-size: 11px;
+      line-height: 1;
+      white-space: nowrap;
+      background: hsla(var(--accent) / .14);
+      cursor: pointer;
+      transition: transform .16s ease, background .16s ease, border-color .16s ease;
+    }
+    .lyric-action:hover {
+      transform: translateY(-1px);
+      background: hsla(var(--accent) / .24);
+      border-color: hsla(var(--accent) / .46);
+    }
+    .lyric-action.empty {
+      color: var(--soft);
+      background: rgba(255,255,255,.07);
+      border-color: var(--line);
+    }
+    .remove {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: rgba(255,255,255,.52);
+    }
+    .remove:hover { background: rgba(255,255,255,.13); color: white; }
+    .empty-card {
+      padding: 16px;
+      color: var(--soft);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .settings {
+      display: grid;
+      gap: 9px;
+      border-top: 1px solid var(--line);
+      padding-top: 13px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 86px minmax(0,1fr);
+      gap: 10px;
+      align-items: center;
+    }
+    .row label { color: var(--soft); font-size: 12px; }
+    select, input[type="range"] { width: 100%; }
+    select {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.09);
+      color: var(--text);
+      border-radius: 14px;
+      height: 36px;
+      padding: 0 11px;
+      outline: none;
+      font-size: 12px;
+    }
+    option { color: #111827; }
+    input[type="range"] { accent-color: var(--accent-solid); }
+    .inline-range { display: grid; grid-template-columns: minmax(0,1fr) 46px; gap: 8px; align-items: center; }
+    .inline-range b { color: var(--soft); font-size: 12px; font-weight: 500; text-align: right; }
+
+    .stage {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      border-radius: var(--radius-xl);
+      display: grid;
+      place-items: center;
+      isolation: isolate;
+    }
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: -25%;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at var(--sx, 50%) var(--sy, 45%), hsla(var(--accent) / .20), transparent 28%),
+        conic-gradient(from 160deg, transparent, rgba(255,255,255,.14), transparent, rgba(255,255,255,.07), transparent);
+      opacity: calc(.62 * var(--ambient));
+      animation: slowSpin 24s linear infinite;
+      z-index: -2;
+    }
+    @keyframes slowSpin { to { transform: rotate(360deg); } }
+
+    .video-ghost, .video-main {
+      position: absolute;
+      display: none;
+      object-fit: cover;
+      background: black;
+    }
+    .video-ghost {
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: .42;
+      filter: blur(20px) saturate(1.3);
+      transform: scale(1.06);
+      z-index: -1;
+    }
+    .video-main {
+      top: 76px;
+      width: min(74vw, 880px);
+      height: min(46vh, 480px);
+      border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 24px 86px rgba(0,0,0,.38);
+      z-index: 0;
+    }
+    .has-video .video-ghost, .has-video .video-main { display: block; }
+
+    .has-video {
+      background: radial-gradient(circle at center, rgba(255,255,255,.035), rgba(0,0,0,.28) 70%), #02040a;
+    }
+    .has-video .video-main {
+      object-fit: contain;
+      top: 66px;
+      width: min(92%, 1220px);
+      height: min(68vh, calc(100% - var(--player-h) - 126px));
+      max-height: 760px;
+      background: #000;
+    }
+    .stage.video-movie .video-ghost {
+      opacity: .26;
+      filter: blur(26px) saturate(1.2);
+      transform: scale(1.08);
+    }
+    .stage.video-movie .visualizer {
+      opacity: 0;
+    }
+    .stage.video-subtitle .lyric-card {
+      position: absolute;
+      left: 50%;
+      bottom: calc(var(--player-h) + 42px);
+      width: min(980px, 84%);
+      height: auto;
+      min-height: 72px;
+      max-height: 172px;
+      margin-top: 0;
+      transform: translateX(-50%);
+      border-radius: 26px;
+      background: linear-gradient(180deg, rgba(0,0,0,.46), rgba(0,0,0,.26));
+      border-color: rgba(255,255,255,.16);
+      box-shadow: 0 18px 70px rgba(0,0,0,.36);
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    }
+    .stage.video-subtitle .lyric-card::before { opacity: .24; }
+    .stage.video-subtitle .lyrics { padding: 15px 28px; }
+    .stage.video-subtitle .line {
+      display: none !important;
+      margin: 0;
+      font-size: clamp(18px, 2.8vw, 36px);
+      line-height: 1.25;
+      letter-spacing: -.025em;
+      font-weight: 720;
+      text-shadow: 0 2px 12px rgba(0,0,0,.58), 0 0 24px var(--lyric-glow);
+    }
+    .stage.video-subtitle .line.current { display: block !important; }
+    .stage.video-subtitle .empty-lyrics h2 {
+      font-size: clamp(18px, 2.4vw, 32px);
+      letter-spacing: -.04em;
+    }
+    .stage.video-subtitle .empty-lyrics p { font-size: 12px; }
+    .stage.video-clean .lyric-card {
+      opacity: 0;
+      transform: translateX(-50%) translateY(10px) scale(.98);
+      pointer-events: none;
+    }
+    .stage.video-lyric-overlay .lyric-card {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      bottom: auto;
+      width: min(980px, 82%);
+      height: min(420px, 52vh);
+      margin-top: 0;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.065));
+    }
+
+
+    .topbar {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 3;
+      pointer-events: none;
+    }
+    .status, .shortcuts {
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.18);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      color: rgba(255,255,255,.7);
+      font-size: 12px;
+      padding: 9px 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .lyric-card {
+      width: min(980px, 88%);
+      height: min(560px, 60vh);
+      border-radius: 42px;
+      position: relative;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      z-index: 1;
+      transition: opacity .22s ease, transform .22s ease, height .22s ease;
+    }
+    .has-video .lyric-card {
+      margin-top: 0;
+      height: min(300px, 32vh);
+    }
+    .lyric-card::before {
+      content: "";
+      position: absolute;
+      inset: -30%;
+      background:
+        radial-gradient(circle at 28% 28%, rgba(255,255,255,.16), transparent 28%),
+        radial-gradient(circle at 72% 72%, hsla(var(--accent) / .16), transparent 30%);
+      opacity: .72;
+      animation: breathe 8s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes breathe { 50% { transform: scale(1.06); opacity: .92; } }
+
+    .lyrics {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 36px 42px;
+      text-align: center;
+      overflow: hidden;
+    }
+    .line {
+      margin: 14px 0;
+      color: var(--lyric-muted);
+      font-size: var(--lyric-size);
+      font-weight: var(--lyric-weight);
+      letter-spacing: -.055em;
+      line-height: 1.05;
+      text-wrap: balance;
+      transform: scale(.92);
+      filter: blur(.35px);
+      opacity: .5;
+      transition: opacity .34s cubic-bezier(.2,.8,.2,1), transform .34s cubic-bezier(.2,.8,.2,1), color .34s ease, filter .34s ease;
+    }
+    .line.current {
+      color: var(--lyric-current);
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0);
+      text-shadow: 0 0 24px rgba(255,255,255,.18), 0 0 42px var(--lyric-glow);
+    }
+    .line .lyric-part {
+      display: block;
+      max-width: 100%;
+    }
+    .line .lyric-part + .lyric-part {
+      margin-top: .08em;
+    }
+    .line .lyric-part.subtle {
+      opacity: .9;
+    }
+    .mode-ticker .line .lyric-part {
+      display: inline;
+    }
+    .mode-ticker .line .lyric-part + .lyric-part {
+      margin-top: 0;
+    }
+    .mode-ticker .line .lyric-part + .lyric-part::before {
+      content: "  ·  ";
+      opacity: .62;
+    }
+    .stage.video-subtitle .line .lyric-part + .lyric-part {
+      margin-top: .1em;
+    }
+    .line.near { color: var(--lyric-near); opacity: .72; transform: scale(.96); }
+    .line.past { color: var(--lyric-past); opacity: .22; }
+    .lyric-rainbow .line.current {
+      color: transparent;
+      background: linear-gradient(90deg, #ff8ac7, #ffd36e, #9dffcf, #8bd3ff, #c9a7ff, #ff8ac7);
+      background-size: 240% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      animation: rainbowText 5.8s linear infinite;
+      text-shadow: 0 0 28px rgba(255,255,255,.18);
+    }
+    @keyframes rainbowText { to { background-position: 240% 0; } }
+    .lyric-rainbow .mode-float .line.current { animation: drift 5.4s ease-in-out infinite, rainbowText 5.8s linear infinite; }
+    .lyric-rainbow .mode-orbit .line.current { animation: orbit 7.2s ease-in-out infinite, rainbowText 5.8s linear infinite; }
+    .lyric-rainbow .mode-ticker .line.current { animation: ticker 12s linear infinite, rainbowText 5.8s linear infinite; }
+
+    .mode-focus .line,
+    .mode-float .line,
+    .mode-orbit .line,
+    .mode-ticker .line {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: calc(100% - 64px);
+      margin: 0;
+      transform: translate(-50%,-50%) scale(.94);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .mode-focus .line.current,
+    .mode-float .line.current,
+    .mode-orbit .line.current,
+    .mode-ticker .line.current {
+      opacity: 1;
+      transform: translate(-50%,-50%) scale(1);
+    }
+    .mode-float .line.current { animation: drift 5.4s ease-in-out infinite; }
+    .mode-orbit .line.current { animation: orbit 7.2s ease-in-out infinite; }
+    .mode-ticker .line.current {
+      white-space: nowrap;
+      width: auto;
+      min-width: 100%;
+      animation: ticker 12s linear infinite;
+    }
+    @keyframes drift {
+      0%,100% { transform: translate(-50%,-50%) scale(1); }
+      50% { transform: translate(-50%, calc(-50% - 15px)) scale(1.016); }
+    }
+    @keyframes orbit {
+      0%,100% { transform: translate(calc(-50% - 8px), calc(-50% + 6px)) scale(1); }
+      50% { transform: translate(calc(-50% + 10px), calc(-50% - 10px)) scale(1.018); }
+    }
+    @keyframes ticker {
+      from { transform: translate(70%, -50%) scale(1); }
+      to { transform: translate(-170%, -50%) scale(1); }
+    }
+    .empty-lyrics { max-width: 520px; color: var(--soft); line-height: 1.7; }
+    .empty-lyrics h2 { margin: 0 0 10px; font-size: clamp(30px,5vw,70px); letter-spacing: -.06em; color: rgba(255,255,255,.94); line-height: .95; }
+    .empty-lyrics p { margin: 0; font-size: 14px; }
+
+    .visualizer {
+      position: absolute;
+      left: 50%;
+      bottom: calc(var(--player-h) + 40px);
+      transform: translateX(-50%);
+      width: min(700px, 70%);
+      height: 72px;
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      gap: 5px;
+      opacity: .35;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .bar-stick {
+      width: 4px;
+      min-height: 7px;
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,.9), hsla(var(--accent) / .42));
+    }
+
+
+    .cd-mini {
+      position: absolute;
+      left: 28px;
+      bottom: 28px;
+      z-index: 8;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      max-width: min(360px, calc(100% - 56px));
+      padding: 10px 13px 10px 10px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 999px;
+      background: rgba(8, 12, 24, .34);
+      box-shadow: 0 18px 56px rgba(0,0,0,.30);
+      backdrop-filter: blur(24px) saturate(1.35);
+      -webkit-backdrop-filter: blur(24px) saturate(1.35);
+      color: rgba(255,255,255,.88);
+    }
+    .cd-disc {
+      width: 48px;
+      height: 48px;
+      border: 0;
+      padding: 0;
+      border-radius: 50%;
+      position: relative;
+      cursor: pointer;
+      flex: 0 0 auto;
+      background:
+        radial-gradient(circle at center, rgba(255,255,255,.94) 0 7%, rgba(0,0,0,.42) 8% 15%, transparent 16%),
+        conic-gradient(from 0deg, rgba(255,255,255,.92), hsla(var(--accent) / .48), rgba(255,255,255,.18), rgba(0,0,0,.62), rgba(255,255,255,.78));
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.22), 0 0 32px hsla(var(--accent) / .18);
+      animation: cdSpin 7.6s linear infinite;
+      animation-play-state: paused;
+    }
+    .cd-disc::before {
+      content: "";
+      position: absolute;
+      inset: 7px;
+      border-radius: inherit;
+      border: 1px solid rgba(255,255,255,.18);
+      background: repeating-radial-gradient(circle, rgba(255,255,255,.10) 0 1px, transparent 2px 5px);
+    }
+    .cd-core {
+      position: absolute;
+      inset: 18px;
+      border-radius: inherit;
+      background: rgba(8, 12, 24, .75);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.22);
+    }
+    @keyframes cdSpin { to { transform: rotate(360deg); } }
+    .cd-info {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+    }
+    .cd-info strong, .cd-info span {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cd-info strong { font-size: 13px; letter-spacing: -.02em; }
+    .cd-info span { font-size: 11px; color: rgba(255,255,255,.52); }
+    .music-focus .panel { transform: translateX(calc(-100% - 28px)); opacity: 0; pointer-events: none; }
+    .music-focus.app {
+      position: fixed;
+      inset: 0;
+      grid-template-columns: 1fr;
+      padding: 0;
+      gap: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 55;
+      background: radial-gradient(circle at 50% 48%, hsla(var(--accent) / .12), transparent 34%), rgba(2, 6, 18, .62);
+    }
+    .music-focus .stage {
+      grid-column: 1 / -1;
+      width: 100vw;
+      height: 100vh;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .music-focus .topbar,
+    .music-focus .player,
+    .music-focus .visualizer,
+    .music-focus .video-main,
+    .music-focus .video-ghost { display: none !important; }
+    .music-focus .lyric-card {
+      width: 100vw;
+      height: 100vh;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transform: none;
+      margin: 0;
+    }
+    .music-focus .lyric-card::before { opacity: .18; filter: blur(10px); }
+    .music-focus .lyrics {
+      padding: clamp(28px, 8vw, 120px);
+    }
+    .music-focus .line {
+      display: none !important;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(1100px, calc(100vw - 48px));
+      margin: 0;
+      transform: translate(-50%, -50%) scale(.98);
+      font-size: clamp(44px, 8vw, 128px);
+      line-height: 1.08;
+      letter-spacing: -.075em;
+      text-align: center;
+    }
+    .music-focus .line.current {
+      display: block !important;
+      animation: drift 5.8s ease-in-out infinite;
+      text-shadow: 0 0 30px rgba(255,255,255,.22), 0 0 82px var(--lyric-glow);
+    }
+    .music-focus .empty-lyrics {
+      text-align: center;
+      max-width: 720px;
+    }
+    .music-focus .cd-mini { display: flex; }
+    .music-focus.is-playing .cd-disc { animation-play-state: running; }
+    @media (max-width: 700px) {
+      .music-focus .line { font-size: clamp(38px, 14vw, 86px); width: calc(100vw - 30px); }
+      .music-focus .cd-mini { left: 14px; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); max-width: none; }
+    }
+
+    .player {
+      position: absolute;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%);
+      width: min(760px, calc(100% - 44px));
+      min-height: var(--player-h);
+      border-radius: 31px;
+      padding: 17px 19px;
+      display: grid;
+      gap: 13px;
+      z-index: 4;
+    }
+    .now {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto;
+      align-items: baseline;
+      gap: 14px;
+    }
+    .now strong, .now span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .now strong { font-size: 15px; letter-spacing: -.025em; }
+    .now span { color: var(--faint); font-size: 12px; margin-top: 4px; }
+    .time { color: var(--soft); font-size: 12px; }
+    .seek {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.13);
+      cursor: pointer;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .seek-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(255,255,255,.92), var(--accent-solid));
+      box-shadow: 0 0 24px hsla(var(--accent) / .45);
+    }
+    .transport {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+    }
+    .side-tools { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .side-tools.right { justify-content: end; }
+    .volume { width: 86px; }
+    .icon {
+      height: 36px;
+      min-width: 42px;
+      padding: 0 11px;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .control-set { display: flex; align-items: center; justify-content: center; gap: 12px; }
+    .control {
+      width: 46px;
+      height: 46px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-size: 19px;
+    }
+    .control.primary {
+      width: 60px;
+      height: 60px;
+      background: rgba(255,255,255,.9);
+      color: #0f172a;
+      font-size: 22px;
+      border-color: rgba(255,255,255,.72);
+    }
+    .control.primary:hover { background: #fff; }
+
+    .drawer-toggle { display: none; }
+    .hidden-media { display: none; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 26px;
+      transform: translate(-50%, 18px);
+      opacity: 0;
+      pointer-events: none;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(10,12,22,.68);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      color: rgba(255,255,255,.82);
+      padding: 10px 14px;
+      font-size: 13px;
+      z-index: 30;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%,0); }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 25;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(0,0,0,.42);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .modal.open { display: grid; }
+    .modal-card {
+      width: min(720px, 100%);
+      border-radius: 30px;
+      padding: 20px;
+      display: grid;
+      gap: 13px;
+    }
+    .modal-card h2 { margin: 0; font-size: 22px; letter-spacing: -.04em; }
+    .modal-card p { margin: 0; color: var(--soft); font-size: 13px; line-height: 1.55; }
+    textarea {
+      width: 100%;
+      height: 290px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      outline: none;
+      padding: 14px;
+      line-height: 1.55;
+      user-select: text;
+    }
+    .modal-actions { display: flex; justify-content: end; gap: 9px; }
+
+    .immersive .panel { transform: translateX(calc(-100% - 28px)); opacity: 0; pointer-events: none; }
+    .immersive.app {
+      position: fixed;
+      inset: 0;
+      grid-template-columns: 1fr;
+      padding: 0;
+      gap: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 50;
+      background: transparent;
+    }
+    .immersive .stage {
+      grid-column: 1 / -1;
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+      border: 0;
+    }
+    .immersive .stage::before { opacity: calc(.88 * var(--ambient)); filter: saturate(1.25); }
+    .immersive .video-main { opacity: .28; width: 100vw; height: 100vh; top: 0; border-radius: 0; border: 0; filter: blur(2px) saturate(1.08); }
+    .immersive .video-ghost { opacity: .5; filter: blur(28px) saturate(1.45); transform: scale(1.1); }
+    .immersive .lyric-card {
+      width: min(1240px, 92vw);
+      height: min(760px, 74vh);
+      border-radius: 56px;
+      transform: scale(1.04);
+      margin-top: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.072));
+    }
+    .immersive .has-video .lyric-card { margin-top: 0; height: min(720px, 70vh); }
+    .immersive .lyrics { padding: clamp(32px, 7vw, 96px); }
+    .immersive .line { font-size: clamp(44px, 8.4vw, 132px); letter-spacing: -.072em; }
+    .immersive .line.current { text-shadow: 0 0 34px rgba(255,255,255,.24), 0 0 74px var(--lyric-glow); }
+    .immersive .topbar, .immersive .player { transition: opacity .24s ease, transform .24s ease, width .24s ease, min-height .24s ease; }
+    .immersive .topbar { opacity: .72; }
+    .immersive .shortcuts { display: none; }
+    .immersive .player {
+      width: min(348px, calc(100% - 32px));
+      min-height: 72px;
+      bottom: 22px;
+      padding: 9px 11px;
+      border-radius: 999px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.078));
+    }
+    .immersive .player .now,
+    .immersive .player .seek,
+    .immersive .player .side-tools { display: none; }
+    .immersive .transport { display: block; }
+    .immersive .control-set { gap: 10px; }
+    .immersive .control { width: 48px; height: 48px; font-size: 13px; padding: 0; }
+    .immersive .control.primary { width: 56px; height: 56px; font-size: 22px; }
+    .idle.immersive .topbar { opacity: 0; }
+    .idle.immersive .player { opacity: .22; transform: translateX(-50%) translateY(18px) scale(.96); }
+    .idle.immersive .player:hover { opacity: .92; transform: translateX(-50%) translateY(0) scale(1); }
+    .lyrics-hidden .lyric-card { opacity: 0; transform: scale(.98); pointer-events: none; }
+
+    .immersive .stage.video-movie .video-main {
+      opacity: 1;
+      width: 100vw;
+      height: calc(100vh - 104px);
+      max-height: none;
+      top: 0;
+      border-radius: 0;
+      border: 0;
+      filter: none;
+      object-fit: contain;
+      background: #000;
+    }
+    .immersive .stage.video-movie .video-ghost {
+      opacity: .18;
+      filter: blur(34px) saturate(1.16);
+      transform: scale(1.08);
+    }
+    .immersive .stage.video-subtitle .lyric-card {
+      width: min(1120px, 88vw);
+      bottom: 100px;
+      min-height: 76px;
+      max-height: 190px;
+      border-radius: 28px;
+      transform: translateX(-50%);
+    }
+    .immersive .stage.video-subtitle .line { font-size: clamp(22px, 3.6vw, 48px); }
+    .immersive .stage.video-clean .lyric-card { opacity: 0; }
+    .immersive .stage.video-lyric-overlay .lyric-card {
+      width: min(1180px, 90vw);
+      height: min(640px, 68vh);
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .embed .panel, .embed .topbar .shortcuts { display: none; }
+    .embed.app { grid-template-columns: 1fr; padding: 0; }
+    .embed .stage { border-radius: 0; }
+
+
+    @media (max-width: 980px) {
+      .immersive.app { padding: 0; }
+      .immersive .stage { min-height: 100vh; }
+      .immersive .lyric-card { width: 94vw; height: 72vh; border-radius: 38px; }
+      .immersive .line { font-size: clamp(40px, 13vw, 92px); }
+      .immersive .player { bottom: calc(16px + env(safe-area-inset-bottom)); width: min(330px, calc(100% - 28px)); }
+      .immersive .topbar { left: 16px; right: 16px; }
+    }
+
+    @media (max-width: 980px) {
+      body { overflow: hidden; }
+      .app { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+      .panel {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        top: 12px;
+        height: min(74vh, 620px);
+        transform: translateY(calc(-100% - 20px));
+        transition: transform .24s ease, opacity .24s ease;
+      }
+      .panel.open { transform: translateY(0); }
+      .stage { min-height: calc(100vh - 24px); }
+      .drawer-toggle {
+        display: inline-grid;
+        position: fixed;
+        top: 18px;
+        left: 18px;
+        z-index: 18;
+        height: 40px;
+        border-radius: 999px;
+      }
+      .topbar { left: 68px; right: 14px; top: 18px; }
+      .shortcuts { display: none; }
+      .lyric-card { width: calc(100% - 24px); height: 58vh; border-radius: 30px; }
+      .has-video .video-main { width: calc(100% - 24px); height: min(56vh, calc(100% - var(--player-h) - 114px)); top: 64px; border-radius: 22px; object-fit: contain; }
+      .stage.video-subtitle .lyric-card { bottom: calc(var(--player-h) + 24px); width: calc(100% - 32px); min-height: 64px; max-height: 150px; }
+      .stage.video-subtitle .line { font-size: clamp(16px, 5.2vw, 28px); }
+      .stage.video-lyric-overlay .lyric-card { width: calc(100% - 32px); height: 42vh; }
+      .player { width: calc(100% - 24px); bottom: 12px; border-radius: 26px; }
+      .transport { grid-template-columns: 1fr; gap: 10px; }
+      .side-tools { justify-content: center; }
+      .side-tools.right { justify-content: center; }
+      .volume { width: 118px; }
+      .visualizer { bottom: 190px; width: 86%; }
+      .line { font-size: clamp(28px, 10vw, 64px); }
+    }
+
+    @media (max-width: 560px) {
+      .player { padding: 14px; }
+      .now { grid-template-columns: 1fr; gap: 6px; text-align: center; }
+      .time { text-align: center; }
+      .side-tools.right .icon:nth-child(2) { display: none; }
+      .settings .row { grid-template-columns: 76px 1fr; }
+      .brand h1 { font-size: 24px; }
+    }
+
+
+
+    /* v5.1 修复：左侧面板允许纵向滚动，避免设置项被截断。 */
+    .panel {
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.30) transparent;
+    }
+    .panel::-webkit-scrollbar { width: 8px; }
+    .panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,.24); border-radius: 999px; }
+    .panel .playlist { flex: 1 1 auto; min-height: 126px; max-height: 28vh; }
+    .panel .settings { flex: 0 0 auto; padding-bottom: 6px; }
+    .panel .brand, .panel .drop, .panel .tools-3, .panel .search { flex: 0 0 auto; }
+
+
+
+    /* v5.3.4 桌面端设置入口与可视化设置面板 */
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      min-width: 0;
+      pointer-events: auto;
+    }
+    .desktop-settings-trigger {
+      min-height: 34px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 999px;
+      background: rgba(0,0,0,.20);
+      color: rgba(255,255,255,.78);
+      padding: 0 12px;
+      font-size: 12px;
+      cursor: pointer;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      pointer-events: auto;
+    }
+    .desktop-settings-trigger:hover {
+      background: rgba(255,255,255,.14);
+      color: rgba(255,255,255,.94);
+    }
+    .desktop-settings-card {
+      width: min(720px, 100%);
+      max-height: min(86vh, 760px);
+      overflow: auto;
+    }
+    .desktop-settings-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: start;
+    }
+    .desktop-settings-head h2 {
+      margin: 10px 0 8px;
+      font-size: clamp(28px, 5vw, 42px);
+      line-height: .96;
+      letter-spacing: -.06em;
+    }
+    .desktop-close {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      padding: 0;
+      font-size: 18px;
+    }
+    .desktop-settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .desktop-setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 48px;
+      padding: 11px 12px;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 18px;
+      background: rgba(255,255,255,.065);
+      color: rgba(255,255,255,.78);
+      font-size: 13px;
+    }
+    .desktop-setting-row input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--accent-solid);
+    }
+    .desktop-setting-row select {
+      width: 150px;
+      max-width: 52%;
+      height: 34px;
+    }
+    .desktop-setting-row.range-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+    }
+    .desktop-setting-row.range-row b {
+      color: rgba(255,255,255,.94);
+      font-weight: 650;
+    }
+    .desktop-settings-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+    .desktop-settings-note {
+      color: rgba(255,255,255,.48);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    @media (max-width: 720px) {
+      .desktop-settings-grid { grid-template-columns: 1fr; }
+      .desktop-setting-row.range-row { grid-template-columns: 1fr; }
+      .desktop-setting-row select { max-width: 100%; }
+      .desktop-settings-actions { justify-content: stretch; }
+      .desktop-settings-actions .btn, .desktop-settings-actions .file-btn { flex: 1 1 auto; }
+    }
+    @media (max-width: 980px) {
+      .topbar-actions { max-width: calc(100% - 74px); }
+      .desktop-settings-trigger { min-height: 40px; }
+    }
+
+
+
+    /* v5.3.4 release materials: first-run onboarding and update modal */
+    .release-card {
+      width: min(760px, 100%);
+      max-height: min(88vh, 780px);
+      overflow: auto;
+      padding: 0;
+    }
+    .release-hero {
+      padding: 26px 26px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.15);
+      background:
+        radial-gradient(circle at 18% 12%, hsla(var(--accent) / .32), transparent 38%),
+        linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.055));
+    }
+    .release-hero h2 {
+      margin: 10px 0 10px;
+      font-size: clamp(32px, 6vw, 54px);
+      line-height: .94;
+      letter-spacing: -.07em;
+    }
+    .release-hero p {
+      margin: 0;
+      max-width: 620px;
+      color: rgba(255,255,255,.72);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+    .release-body {
+      display: grid;
+      gap: 14px;
+      padding: 20px 26px 24px;
+    }
+    .release-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .release-tile {
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 20px;
+      padding: 14px;
+      background: rgba(255,255,255,.065);
+    }
+    .release-tile strong {
+      display: block;
+      margin-bottom: 7px;
+      color: rgba(255,255,255,.94);
+      font-size: 13px;
+    }
+    .release-tile span {
+      display: block;
+      color: rgba(255,255,255,.62);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .release-list {
+      margin: 0;
+      padding-left: 19px;
+      color: rgba(255,255,255,.70);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+    .release-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .release-muted {
+      color: rgba(255,255,255,.48);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    @media (max-width: 720px) {
+      .release-grid { grid-template-columns: 1fr; }
+      .release-actions { justify-content: stretch; }
+      .release-actions .btn, .release-actions .file-btn { flex: 1 1 auto; }
+    }
+
+
+    /* v5.3.4 窗口化专用紧凑布局：避免 Electron 小窗口下播放器遮挡与文字截断。 */
+    @media (max-width: 1120px), (max-height: 760px) {
+      :root { --player-h: 112px; }
+      .player {
+        width: min(560px, calc(100% - 28px));
+        min-height: 104px;
+        bottom: 12px;
+        padding: 10px 12px;
+        gap: 8px;
+        border-radius: 24px;
+      }
+      .now { grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+      .now strong { font-size: 13px; }
+      .now span { display: none; }
+      .time { font-size: 11px; }
+      .seek { height: 6px; }
+      .transport { grid-template-columns: auto 1fr auto; gap: 8px; }
+      .side-tools { gap: 6px; justify-content: flex-start; }
+      .side-tools.right { justify-content: flex-end; }
+      .volume, #speedSelect, #alignBackBtn, #alignForwardBtn, #musicFocusBtn { display: none !important; }
+      .icon { height: 32px; min-width: 36px; padding: 0 9px; font-size: 11px; }
+      .control { width: 40px; height: 40px; font-size: 16px; }
+      .control.primary { width: 48px; height: 48px; font-size: 20px; }
+      .visualizer { bottom: calc(var(--player-h) + 22px); height: 48px; opacity: .24; }
+      .lyric-card { height: min(460px, calc(100vh - var(--player-h) - 118px)); }
+      .has-video .video-main { height: min(54vh, calc(100% - var(--player-h) - 112px)); }
+    }
+
+    @media (max-width: 760px), (max-height: 620px) {
+      :root { --player-h: 82px; }
+      .player {
+        width: min(430px, calc(100% - 20px));
+        min-height: 76px;
+        padding: 8px 10px;
+        gap: 7px;
+        border-radius: 22px;
+      }
+      .now { grid-template-columns: minmax(0,1fr) auto; align-items: center; }
+      .now strong { font-size: 12px; }
+      .time { font-size: 10px; }
+      .transport { display: flex; align-items: center; justify-content: center; }
+      .side-tools, .side-tools.right { display: none !important; }
+      .control-set { gap: 9px; }
+      .control { width: 38px; height: 38px; }
+      .control.primary { width: 44px; height: 44px; }
+      .seek { height: 5px; }
+      .visualizer { display: none; }
+      .lyric-card { height: min(420px, calc(100vh - var(--player-h) - 96px)); }
+      .stage.video-subtitle .lyric-card { bottom: calc(var(--player-h) + 16px); }
+    }
+
+    @media (max-width: 520px) {
+      .player { width: calc(100% - 18px); }
+      .now { display: none; }
+      .player { min-height: 64px; }
+      .transport { height: 48px; }
+      .seek { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+
+  <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Floating Lyrics Player","applicationCategory":"MultimediaApplication","operatingSystem":"Web","author":{"@type":"Person","name":"马星煜","url":"https://maxingyu.cn"},"url":"https://maxingyu.cn"}
+  </script>
+<link rel="icon" href="./public/favicon.ico?v=5.3.5" sizes="any">
+<link rel="icon" href="./public/favicon.svg?v=5.3.5" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./public/icons/icon-192.png?v=5.3.5">
+  <meta property="og:title" content="Elplayer · Floating Lyrics Multimedia Player" />
+  <meta property="og:description" content="A transparent floating lyrics multimedia player for local audio, video, lyrics, and subtitles." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="public/preview.png" />
+</head>
+<body>
+  <main class="app" id="app">
+    <button class="icon drawer-toggle" id="drawerToggle">菜单</button>
+
+    <aside class="panel glass" id="panel">
+      <header class="brand">
+        <div>
+          <h1>Floating Lyrics</h1>
+          <p><a class="domain-link" href="https://maxingyu.cn" target="_blank" rel="noreferrer">maxingyu.cn</a></p>
+        </div>
+        <div class="pill dot" id="versionPill" tabindex="0" data-tooltip="长按进入作者彩蛋">v5.3.4</div>
+      </header>
+
+      <section class="drop" id="dropZone">
+        <div class="drop-head">
+          <strong>导入媒体与歌词</strong>
+          <span class="pill" id="mediaCount">0 首</span>
+        </div>
+        <small>可拖入音频、视频、MKV、LRC、SRT、VTT、TXT。视频默认完整显示，歌词会优先按文件名自动匹配。</small>
+        <div class="drop-actions">
+          <label class="file-btn">选择媒体<input id="mediaInput" class="file-input" type="file" accept="audio/*,video/*,.mkv,.mp4,.m4v,.mov,.webm,.ogv,.avi,.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus" multiple></label>
+          <label class="file-btn">选择歌词<input id="lyricInput" class="file-input" type="file" accept=".lrc,.txt,.srt,.vtt" multiple></label>
+        </div>
+        <div class="tools-2">
+          <button class="btn" id="pasteLyricBtn">粘贴歌词</button>
+          <button class="btn" id="copyEmbedBtn">嵌入代码</button>
+        </div>
+      </section>
+
+      <section class="tools-3">
+        <button class="btn" id="shuffleBtn">随机：关</button>
+        <button class="btn active" id="autoBtn">自动续播：开</button>
+        <button class="btn active" id="repeatBtn">循环：全部</button>
+      </section>
+
+      <div class="search"><input id="searchInput" placeholder="搜索曲目" autocomplete="off"></div>
+      <section class="playlist" id="playlist"></section>
+
+      <section class="settings">
+        <div class="tools-3">
+          <button class="btn preset" data-preset="gallery">纯净</button>
+          <button class="btn preset" data-preset="stage">舞台</button>
+          <button class="btn preset" data-preset="reading">阅读</button>
+        </div>
+        <div class="row">
+          <label>歌词模式</label>
+          <select id="lyricMode">
+            <option value="cinema">三行聚焦</option>
+            <option value="focus">单句呼吸</option>
+            <option value="float">单句浮动</option>
+            <option value="orbit">轻微漂移</option>
+            <option value="ticker">横向流动</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>视频模式</label>
+          <select id="videoMode">
+            <option value="auto">自动：有字幕则底部字幕</option>
+            <option value="subtitle">电影字幕</option>
+            <option value="hidden">只看视频</option>
+            <option value="float">浮动歌词</option>
+          </select>
+        </div>
+        <div class="row"><label>字号</label><input id="fontRange" type="range" min="38" max="104" value="78"></div>
+        <div class="row"><label>玻璃</label><input id="glassRange" type="range" min="6" max="24" value="12"></div>
+        <div class="row"><label>氛围</label><input id="ambientRange" type="range" min="22" max="100" value="88"></div>
+        <div class="row"><label>歌词偏移</label><div class="inline-range"><input id="offsetRange" type="range" min="-5" max="5" step="0.1" value="0"><b id="offsetValue">0.0s</b></div></div>
+        <div class="row">
+          <label>主题色</label>
+          <select id="accentSelect">
+            <option value="214 100% 86%">冰蓝</option>
+            <option value="268 100% 86%">雾紫</option>
+            <option value="334 100% 84%">玫瑰</option>
+            <option value="157 84% 80%">薄荷</option>
+            <option value="42 100% 82%">琥珀</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>歌词颜色</label>
+          <select id="lyricColorSelect">
+            <option value="white">纯白</option>
+            <option value="warm">暖白</option>
+            <option value="theme">跟随主题</option>
+            <option value="blue">冰蓝</option>
+            <option value="violet">雾紫</option>
+            <option value="rose">玫瑰</option>
+            <option value="mint">薄荷</option>
+            <option value="amber">琥珀</option>
+            <option value="rainbow">彩色流光</option>
+          </select>
+        </div>
+      </section>
+    </aside>
+
+    <section class="stage glass" id="stage">
+      <video id="videoGhost" class="video-ghost" muted playsinline></video>
+      <video id="videoMain" class="video-main" playsinline></video>
+
+      <div class="topbar">
+        <div class="status" id="statusText">导入文件后开始体验</div>
+        <div class="topbar-actions">
+          <button class="desktop-settings-trigger" id="desktopSettingsBtn" type="button" hidden>桌面设置</button>
+          <div class="shortcuts">Space 播放 · ←/→ 后退/快进 · F 全屏 · V 切换模式 · G 透明歌词</div>
+        </div>
+      </div>
+
+      <section class="lyric-card glass" id="lyricCard">
+        <div class="lyrics mode-cinema" id="lyricsBox">
+          <div class="empty-lyrics">
+            <h2>让歌词浮起来。</h2>
+            <p>导入本地音频或视频，再导入同名歌词。也可以粘贴普通逐行文本，系统会生成临时时间轴。</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="visualizer" id="visualizer" aria-hidden="true"></div>
+
+      <section class="player glass" id="player">
+        <div class="now">
+          <div>
+            <strong id="trackTitle">尚未选择曲目</strong>
+            <span id="trackMeta">等待导入媒体</span>
+          </div>
+          <div class="time" id="timeText">00:00 / 00:00</div>
+        </div>
+        <div class="seek" id="seekBar"><div class="seek-fill" id="seekFill"></div></div>
+        <div class="transport">
+          <div class="side-tools">
+            <button class="icon" id="muteBtn">声音</button>
+            <input class="volume" id="volumeRange" type="range" min="0" max="1" step="0.01" value="0.86">
+            <select id="speedSelect" style="width:82px;border-radius:999px;height:36px;padding:0 10px;">
+              <option value="0.75">0.75×</option>
+              <option value="1" selected>1×</option>
+              <option value="1.25">1.25×</option>
+              <option value="1.5">1.5×</option>
+              <option value="2">2×</option>
+            </select>
+          </div>
+          <div class="control-set">
+            <button class="btn control" id="prevBtn" title="上一首">‹</button>
+            <button class="btn control primary" id="playBtn" title="播放/暂停">▶</button>
+            <button class="btn control" id="nextBtn" title="下一首">›</button>
+          </div>
+          <div class="side-tools right">
+            <button class="icon active" id="lyricsToggle">歌词</button>
+            <button class="icon" id="alignBackBtn" title="歌词延后 0.1 秒">−0.1</button>
+            <button class="icon" id="alignForwardBtn" title="歌词提前 0.1 秒">+0.1</button>
+            <button class="icon" id="musicFocusBtn" title="音乐全屏透明浮动歌词">透明歌词</button>
+            <button class="icon" id="immersiveBtn">全屏</button>
+          </div>
+        </div>
+      </section>
+
+      <audio id="audio" class="hidden-media"></audio>
+      <section class="cd-mini" id="cdMini" aria-label="音乐全屏透明模式控制">
+        <button class="cd-disc" id="cdMiniPlay" type="button" title="播放/暂停">
+          <span class="cd-core"></span>
+        </button>
+        <div class="cd-info">
+          <strong id="cdMiniTitle">Floating Lyrics</strong>
+          <span id="cdMiniMeta">透明歌词模式</span>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="modal" id="lyricModal" role="dialog" aria-modal="true">
+    <div class="modal-card glass">
+      <h2>粘贴歌词文本</h2>
+      <p>支持 LRC、SRT、VTT，也支持普通逐行文本。普通文本会根据当前曲目时长自动分配时间。</p>
+      <textarea id="lyricTextarea" spellcheck="false" placeholder="[00:00.00] 第一行歌词\n[00:04.20] 第二行歌词\n\n或者直接粘贴普通逐行歌词"></textarea>
+      <div class="modal-actions">
+        <button class="btn" id="closeModalBtn">取消</button>
+        <button class="file-btn" id="applyLyricTextBtn">应用歌词</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="desktopSettingsModal" role="dialog" aria-modal="true" aria-labelledby="desktopSettingsTitle">
+    <div class="modal-card glass desktop-settings-card">
+      <div class="desktop-settings-head">
+        <div>
+          <div class="about-kicker">桌面浮窗 · Desktop Overlay · v5.3.4</div>
+          <h2 id="desktopSettingsTitle">桌面浮窗设置</h2>
+          <p>管理桌面歌词浮窗、极简黑胶机模式、鼠标穿透、窗口锁定和开机启动。</p>
+        </div>
+        <button class="icon desktop-close" id="closeDesktopSettingsBtn" type="button" aria-label="关闭桌面设置">×</button>
+      </div>
+
+      <div class="desktop-settings-grid">
+        <label class="desktop-setting-row">
+          <span>显示桌面浮窗</span>
+          <input id="desktopOverlayVisibleSwitch" type="checkbox">
+        </label>
+        <label class="desktop-setting-row">
+          <span>窗口置顶</span>
+          <input id="desktopAlwaysOnTopSwitch" type="checkbox">
+        </label>
+        <label class="desktop-setting-row">
+          <span>鼠标穿透</span>
+          <input id="desktopClickThroughSwitch" type="checkbox">
+        </label>
+        <label class="desktop-setting-row">
+          <span>窗口锁定</span>
+          <input id="desktopLockedSwitch" type="checkbox">
+        </label>
+        <label class="desktop-setting-row">
+          <span>开机启动</span>
+          <input id="desktopLaunchAtLoginSwitch" type="checkbox">
+        </label>
+        <label class="desktop-setting-row select-row">
+          <span>浮窗模式</span>
+          <select id="desktopOverlayModeSelect">
+            <option value="lyrics">桌面歌词</option>
+            <option value="mini">极简黑胶机</option>
+          </select>
+        </label>
+        <label class="desktop-setting-row select-row">
+          <span>极简尺寸</span>
+          <select id="desktopMiniSizeSelect">
+            <option value="small">小</option>
+            <option value="medium">中</option>
+            <option value="large">大</option>
+          </select>
+        </label>
+        <label class="desktop-setting-row range-row">
+          <span>透明度 <b id="desktopOpacityValue">88%</b></span>
+          <input id="desktopOpacityRange" type="range" min="30" max="100" value="88">
+        </label>
+        <label class="desktop-setting-row range-row">
+          <span>歌词字号 <b id="desktopFontSizeValue">42px</b></span>
+          <input id="desktopFontSizeRange" type="range" min="24" max="72" value="42">
+        </label>
+      </div>
+
+      <div class="desktop-settings-actions">
+        <button class="btn" id="desktopResetPositionBtn" type="button">重置当前位置</button>
+        <button class="btn" id="desktopShowMainBtn" type="button">显示主窗口</button>
+        <button class="file-btn" id="desktopApplyCloseBtn" type="button">完成</button>
+      </div>
+      <p class="desktop-settings-note">提示：开启鼠标穿透后，浮窗按钮不可点击。可通过主窗口右上角“桌面设置”、托盘菜单或快捷键 Ctrl/Cmd + Shift + P 关闭穿透。</p>
+    </div>
+  </div>
+
+
+  <div class="modal" id="onboardingModal" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+    <div class="modal-card glass release-card">
+      <div class="release-hero">
+        <div class="about-kicker">首次启动 · First Launch · v5.3.4</div>
+        <h2 id="onboardingTitle">欢迎使用 Elplayer</h2>
+        <p>这是一款面向本地音频、视频、歌词和字幕的透明浮动歌词播放器。你可以先导入媒体，再进入桌面歌词或极简黑胶机模式。</p>
+      </div>
+      <div class="release-body">
+        <div class="release-grid">
+          <div class="release-tile"><strong>01 · 导入媒体</strong><span>拖入音频或视频，也可以点击“选择媒体”。本地文件不会上传。</span></div>
+          <div class="release-tile"><strong>02 · 匹配歌词</strong><span>导入同名 LRC / SRT / VTT / TXT，或直接粘贴歌词文本。</span></div>
+          <div class="release-tile"><strong>03 · 桌面浮窗</strong><span>在桌面版右上角打开“桌面设置”，管理透明歌词、黑胶机、置顶和鼠标穿透。</span></div>
+        </div>
+        <ol class="release-list">
+          <li>音乐场景推荐使用“透明歌词”或“极简黑胶机”。</li>
+          <li>视频场景推荐使用“电影字幕”或“浮动歌词”。</li>
+          <li>开启鼠标穿透后，可通过主窗口、托盘或快捷键恢复操作。</li>
+        </ol>
+        <div class="release-actions">
+          <button class="btn" id="onboardingUpdateBtn" type="button">查看 v5.3.4 更新</button>
+          <button class="file-btn" id="onboardingStartBtn" type="button">开始使用</button>
+        </div>
+        <p class="release-muted">首次启动引导只会自动显示一次。你仍然可以通过 README 与 docs 文档查看完整使用方式。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="releaseNotesModal" role="dialog" aria-modal="true" aria-labelledby="releaseNotesTitle">
+    <div class="modal-card glass release-card">
+      <div class="release-hero">
+        <div class="about-kicker">版本更新 · Release Notes · v5.3.4</div>
+        <h2 id="releaseNotesTitle">更新说明</h2>
+        <p>本次更新集中补齐正式发布所需的外部展示、安装说明、下载页面和应用内引导，不改变核心播放与解析逻辑。</p>
+      </div>
+      <div class="release-body">
+        <div class="release-grid">
+          <div class="release-tile"><strong>Release 页面</strong><span>新增 GitHub Release 截图、发布模板和下载清单。</span></div>
+          <div class="release-tile"><strong>安装说明</strong><span>新增 Windows / macOS 安装包使用说明与测试清单。</span></div>
+          <div class="release-tile"><strong>官网入口</strong><span>新增 download.html，可作为官网二级下载页使用。</span></div>
+        </div>
+        <ul class="release-list">
+          <li>新增首次启动引导页，帮助用户理解导入、歌词匹配和桌面浮窗。</li>
+          <li>新增版本更新弹窗，展示 v5.3.4 关键变化。</li>
+          <li>统一 README、Release 模板、Changelog、安装说明和应用内版本号。</li>
+        </ul>
+        <div class="release-actions">
+          <button class="btn" id="releaseNotesLaterBtn" type="button">稍后再看</button>
+          <button class="file-btn" id="releaseNotesCloseBtn" type="button">知道了</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <div class="modal-card glass about-card manual-card">
+      <div class="about-hero manual-hero">
+        <div class="about-kicker">工具说明书 · Manual</div>
+        <h2 class="about-title" id="aboutTitle">Elplayer<br>使用方式</h2>
+        <div class="about-meta manual-meta">
+          <span>本地音乐 / 视频 / 歌词视觉播放器</span>
+          <span>v5.3.4</span>
+          <a class="about-link" href="https://maxingyu.cn" target="_blank" rel="noreferrer">maxingyu.cn</a>
+        </div>
+      </div>
+      <div class="about-body">
+        <p class="lead">这不是传统播放器的说明页，而是一份使用地图：你可以把它当作音乐歌词空间、视频字幕播放器、MV 展示页，或嵌入个人网站的轻量视觉装置。</p>
+        <p>所有媒体与歌词默认从浏览器本地读取，不上传服务器。刷新页面后需要重新选择本地文件；主题、颜色、音量、歌词模式等偏好会保存在当前浏览器。</p>
+        <p class="manual-author-mini"><strong>作者：</strong>马星煜，在读研究生，关注前端开发、AI 开发与数学建模。</p>
+
+        <div class="usage-block">
+          <strong>01 · 快速开始</strong>
+          <ol class="usage-list">
+            <li>点击左侧导入区，或直接把文件拖入页面。</li>
+            <li>可以批量导入音频、视频，也可以同时导入 <em>LRC / SRT / VTT / TXT</em> 歌词或字幕。</li>
+            <li>歌词或字幕文件建议与媒体文件同名，例如 <em>song.mp3</em> 搭配 <em>song.lrc</em>。</li>
+            <li>如果字幕或歌词快慢不准，使用“歌词偏移”滑杆，或按 <em>[</em> / <em>]</em> 细调。</li>
+          </ol>
+        </div>
+
+        <div class="usage-block">
+          <strong>02 · 音乐模式</strong>
+          <p>导入音频后，页面会进入音乐歌词体验。它适合听歌、展示歌词、制作个人网站上的音乐入口。</p>
+          <ol class="usage-list">
+            <li><em>歌词模式</em> 可选择三行聚焦、单句呼吸、单句浮动、轻微漂移、横向流动。</li>
+            <li><em>主题色</em> 用来控制玻璃光感，<em>歌词颜色</em> 用来控制当前歌词的视觉情绪。</li>
+            <li><em>透明歌词</em> 会进入音乐专用全屏模式：隐藏复杂控件，只保留浮动歌词、透明背景和一个小 CD 机动效。</li>
+            <li>小 CD 机可以显示播放状态；点击 CD 可播放 / 暂停。</li>
+          </ol>
+        </div>
+
+        <div class="usage-block">
+          <strong>03 · 视频模式</strong>
+          <p>导入视频后，播放器会优先保证画面完整显示，不裁切画面。适合 MV、演唱会、电影片段、课程视频和个人影像。</p>
+          <ol class="usage-list">
+            <li><em>电影字幕</em>：适合看电影。推荐加载同名 <em>SRT / VTT</em> 字幕，字幕固定在底部，尽量不遮挡画面。</li>
+            <li><em>只看视频</em>：适合没有字幕、只想观看画面的场景，会隐藏歌词玻璃层。</li>
+            <li><em>浮动歌词</em>：适合看 MV。推荐加载同名 <em>LRC</em> 歌词，让歌词作为视觉层悬浮在视频之上。</li>
+            <li><em>自动模式</em> 会根据文件类型与当前媒体自动选择较合适的显示方式。</li>
+            <li>MKV 能否播放取决于浏览器与编码；若无法播放，建议转换为 <em>MP4 / H.264 / AAC</em>。</li>
+          </ol>
+        </div>
+
+        <div class="usage-block">
+          <strong>04 · 歌词与字幕文件</strong>
+          <ol class="usage-list">
+            <li><em>LRC</em>：最适合音乐歌词，格式如 <em>[00:12.50] 歌词文本</em>。</li>
+            <li><em>SRT / VTT</em>：最适合电影、长视频、课程字幕。</li>
+            <li><em>TXT</em>：适合临时展示逐行歌词；它没有真实时间轴，系统会根据媒体时长自动分配。</li>
+            <li>每首媒体右侧都有 <em>更换歌词</em> 按钮，导错歌词时可只替换当前歌曲，不影响其他曲目。</li>
+          </ol>
+        </div>
+
+        <div class="usage-block">
+          <strong>05 · 智能分行规则</strong>
+          <p>歌词展示会模拟主流音乐播放器的分行逻辑，优先让当前句保持自然、平衡、可读。</p>
+          <ol class="usage-list">
+            <li>如果歌词中包含换行、<em>|</em>、<em>｜</em>、<em> / </em>、<em>／</em> 或 <em>//</em>，系统会把它视为人工分行。</li>
+            <li>中英文双语歌词会尽量拆成两行，例如中文在上、英文在下；括号中的翻译或和声也会单独成行。</li>
+            <li>英文长句会按单词平衡分成两行或三行，避免把 <em>and / to / of / the</em> 这类连接词留在行尾。</li>
+            <li>中文、日文、韩文长句会优先按逗号、顿号、句号、问号等标点断开；没有标点时按语气词、助词和视觉长度切分。</li>
+            <li>电影字幕模式会保留上下两行的阅读结构；横向流动模式不会真正换行，而会用中点 <em>·</em> 做轻分隔，保证字幕仍然横向流动。</li>
+          </ol>
+        </div>
+
+        <div class="usage-block">
+          <strong>06 · 推荐使用场景</strong>
+          <ol class="usage-list">
+            <li><em>听歌</em>：导入音频 + LRC，选择“单句浮动”或“轻微漂移”。</li>
+            <li><em>展示 MV</em>：导入视频 + LRC，选择“浮动歌词”。</li>
+            <li><em>看电影</em>：导入视频 + SRT / VTT，选择“电影字幕”。</li>
+            <li><em>个人网站嵌入</em>：使用 <em>?embed=1</em> 隐藏侧栏，做成页面中的沉浸模块。</li>
+          </ol>
+        </div>
+
+        <div class="usage-block">
+          <strong>07 · 快捷键</strong>
+          <div class="kbd-row">
+            <span>Space 播放 / 暂停</span>
+            <span>← / → 后退 / 快进</span>
+            <span>N / P 下一首 / 上一首</span>
+            <span>F 沉浸模式</span>
+            <span>G 透明歌词</span>
+            <span>V 切换模式</span>
+            <span>L 显示 / 隐藏歌词</span>
+            <span>[ / ] 歌词偏移</span>
+            <span>M 静音</span>
+            <span>Esc 退出弹窗 / 全屏</span>
+          </div>
+        </div>
+
+        <div class="about-contact">
+          <div class="about-section-title">联系与反馈</div>
+          <p>如果你在使用、嵌入或二次修改时遇到问题，可以通过邮件交流。</p>
+          <button class="about-mail" id="contactEmail" type="button" aria-label="通过邮件联系马星煜">✉ mxyppsuc [at] foxmail.com</button>
+        </div>
+
+        <div class="about-actions">
+          <span class="about-note">单击右上角 v5.3.4 查看本说明；长按可进入打地鼠彩蛋。</span>
+          <button class="file-btn" id="closeAboutBtn">回到播放器</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal game-modal" id="moleModal" role="dialog" aria-modal="true" aria-labelledby="moleTitle">
+    <div class="modal-card glass mole-card">
+      <div class="mole-head">
+        <div>
+          <div class="about-kicker">隐藏彩蛋 · Game</div>
+          <h2 id="moleTitle">打地鼠</h2>
+          <p>长按 v5.3.4 进入。30 秒内点击出现的地鼠，测试一下手速。</p>
+        </div>
+        <button class="mole-close" id="closeMoleBtn" type="button" aria-label="关闭打地鼠彩蛋">×</button>
+      </div>
+      <div class="mole-stats" aria-live="polite">
+        <span>得分 <strong id="moleScore">0</strong></span>
+        <span>剩余 <strong id="moleTime">30</strong>s</span>
+        <span>最高 <strong id="moleBest">0</strong></span>
+      </div>
+      <div class="mole-board" id="moleBoard" aria-label="打地鼠游戏区域">
+        <button class="mole-hole" type="button" aria-label="地洞 1"></button>
+        <button class="mole-hole" type="button" aria-label="地洞 2"></button>
+        <button class="mole-hole" type="button" aria-label="地洞 3"></button>
+        <button class="mole-hole" type="button" aria-label="地洞 4"></button>
+        <button class="mole-hole" type="button" aria-label="地洞 5"></button>
+        <button class="mole-hole" type="button" aria-label="地洞 6"></button>
+        <button class="mole-hole" type="button" aria-label="地洞 7"></button>
+        <button class="mole-hole" type="button" aria-label="地洞 8"></button>
+        <button class="mole-hole" type="button" aria-label="地洞 9"></button>
+      </div>
+      <div class="mole-footer">
+        <span id="moleMessage">点击“开始游戏”，地鼠会随机出现。</span>
+        <button class="file-btn" id="startMoleBtn" type="button">开始游戏</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const app = $('app');
+    const panel = $('panel');
+    const drawerToggle = $('drawerToggle');
+    const dropZone = $('dropZone');
+    const mediaInput = $('mediaInput');
+    const lyricInput = $('lyricInput');
+    const mediaCount = $('mediaCount');
+    const playlist = $('playlist');
+    const searchInput = $('searchInput');
+    const stage = $('stage');
+    const audio = $('audio');
+    const videoMain = $('videoMain');
+    const videoGhost = $('videoGhost');
+    const lyricsBox = $('lyricsBox');
+    const lyricCard = $('lyricCard');
+    const visualizer = $('visualizer');
+    const statusText = $('statusText');
+    const trackTitle = $('trackTitle');
+    const trackMeta = $('trackMeta');
+    const timeText = $('timeText');
+    const seekBar = $('seekBar');
+    const seekFill = $('seekFill');
+    const playBtn = $('playBtn');
+    const prevBtn = $('prevBtn');
+    const nextBtn = $('nextBtn');
+    const shuffleBtn = $('shuffleBtn');
+    const autoBtn = $('autoBtn');
+    const repeatBtn = $('repeatBtn');
+    const muteBtn = $('muteBtn');
+    const volumeRange = $('volumeRange');
+    const speedSelect = $('speedSelect');
+    const lyricsToggle = $('lyricsToggle');
+    const immersiveBtn = $('immersiveBtn');
+    const musicFocusBtn = $('musicFocusBtn');
+    const alignBackBtn = $('alignBackBtn');
+    const alignForwardBtn = $('alignForwardBtn');
+    const lyricMode = $('lyricMode');
+    const videoMode = $('videoMode');
+    const fontRange = $('fontRange');
+    const glassRange = $('glassRange');
+    const ambientRange = $('ambientRange');
+    const offsetRange = $('offsetRange');
+    const offsetValue = $('offsetValue');
+    const accentSelect = $('accentSelect');
+    const lyricColorSelect = $('lyricColorSelect');
+    const pasteLyricBtn = $('pasteLyricBtn');
+    const copyEmbedBtn = $('copyEmbedBtn');
+    const lyricModal = $('lyricModal');
+    const lyricTextarea = $('lyricTextarea');
+    const closeModalBtn = $('closeModalBtn');
+    const applyLyricTextBtn = $('applyLyricTextBtn');
+    const versionPill = $('versionPill');
+    const aboutModal = $('aboutModal');
+    const closeAboutBtn = $('closeAboutBtn');
+    const desktopSettingsBtn = $('desktopSettingsBtn');
+    const desktopSettingsModal = $('desktopSettingsModal');
+    const closeDesktopSettingsBtn = $('closeDesktopSettingsBtn');
+    const desktopApplyCloseBtn = $('desktopApplyCloseBtn');
+    const desktopResetPositionBtn = $('desktopResetPositionBtn');
+    const desktopShowMainBtn = $('desktopShowMainBtn');
+    const desktopOverlayVisibleSwitch = $('desktopOverlayVisibleSwitch');
+    const desktopAlwaysOnTopSwitch = $('desktopAlwaysOnTopSwitch');
+    const desktopClickThroughSwitch = $('desktopClickThroughSwitch');
+    const desktopLockedSwitch = $('desktopLockedSwitch');
+    const desktopLaunchAtLoginSwitch = $('desktopLaunchAtLoginSwitch');
+    const desktopOverlayModeSelect = $('desktopOverlayModeSelect');
+    const desktopMiniSizeSelect = $('desktopMiniSizeSelect');
+    const desktopOpacityRange = $('desktopOpacityRange');
+    const desktopOpacityValue = $('desktopOpacityValue');
+    const desktopFontSizeRange = $('desktopFontSizeRange');
+    const desktopFontSizeValue = $('desktopFontSizeValue');
+    const onboardingModal = $('onboardingModal');
+    const onboardingStartBtn = $('onboardingStartBtn');
+    const onboardingUpdateBtn = $('onboardingUpdateBtn');
+    const releaseNotesModal = $('releaseNotesModal');
+    const releaseNotesCloseBtn = $('releaseNotesCloseBtn');
+    const releaseNotesLaterBtn = $('releaseNotesLaterBtn');
+    const APP_VERSION = '5.3.4';
+    const toast = $('toast');
+    const cdMini = $('cdMini');
+    const cdMiniPlay = $('cdMiniPlay');
+    const cdMiniTitle = $('cdMiniTitle');
+    const cdMiniMeta = $('cdMiniMeta');
+    const moleModal = $('moleModal');
+    const closeMoleBtn = $('closeMoleBtn');
+    const startMoleBtn = $('startMoleBtn');
+    const moleBoard = $('moleBoard');
+    const moleScore = $('moleScore');
+    const moleTime = $('moleTime');
+    const moleBest = $('moleBest');
+    const moleMessage = $('moleMessage');
+    const moleHoles = [...document.querySelectorAll('.mole-hole')];
+    const presets = [...document.querySelectorAll('.preset')];
+
+    const state = {
+      tracks: [],
+      lyricStore: new Map(),
+      lyricOverrides: new Map(),
+      nextTrackId: 1,
+      currentIndex: -1,
+      activeMedia: audio,
+      activeLyrics: [],
+      currentLine: -1,
+      search: '',
+      shuffle: false,
+      autoNext: true,
+      repeat: 'all',
+      lyricsVisible: true,
+      lyricOffset: 0,
+      lyricColor: 'white',
+      videoMode: 'auto',
+      musicFocus: false,
+      audioContext: null,
+      sourceNodes: new WeakMap(),
+      analyser: null,
+      bars: [],
+      raf: null,
+      idleTimer: null,
+      wakeLock: null,
+      desktopSyncTimer: null
+    };
+
+    const moleState = {
+      active: false,
+      score: 0,
+      time: 30,
+      best: Number(localStorage.getItem('floatingLyricsMoleBest') || 0),
+      current: -1,
+      tickTimer: null,
+      popTimer: null
+    };
+
+    const sampleLyrics = [
+      { time: 0, text: '导入媒体，让声音进入透明空间' },
+      { time: 4, text: '歌词可以滚动、漂浮、横向流动' },
+      { time: 8, text: '它适合成为个人网站里的一个体验入口' }
+    ];
+
+
+    function init() {
+      buildVisualizer();
+      loadSettings();
+      applyControls();
+      updateToggles();
+      renderPlaylist();
+      renderLyrics(sampleLyrics, true);
+      setupDesktopSettingsPanel();
+      setupDesktopBridge();
+      setupReleaseExperience();
+      if (new URLSearchParams(location.search).has('embed')) app.classList.add('embed');
+    }
+
+    function loadSettings() {
+      try {
+        const s = JSON.parse(localStorage.getItem('flp.v5.settings') || '{}');
+        if (s.lyricMode) lyricMode.value = s.lyricMode;
+        if (s.fontSize) fontRange.value = s.fontSize;
+        if (s.glass) glassRange.value = s.glass;
+        if (s.ambient) ambientRange.value = s.ambient;
+        if (s.offset) offsetRange.value = s.offset;
+        if (s.accent) accentSelect.value = s.accent;
+        if (s.lyricColor) lyricColorSelect.value = s.lyricColor;
+        if (s.videoMode) videoMode.value = s.videoMode;
+        if (s.volume) volumeRange.value = s.volume;
+        if (s.speed) speedSelect.value = s.speed;
+        if (typeof s.shuffle === 'boolean') state.shuffle = s.shuffle;
+        if (typeof s.autoNext === 'boolean') state.autoNext = s.autoNext;
+        if (s.repeat) state.repeat = s.repeat;
+      } catch {}
+    }
+
+    function saveSettings() {
+      localStorage.setItem('flp.v5.settings', JSON.stringify({
+        lyricMode: lyricMode.value,
+        fontSize: fontRange.value,
+        glass: glassRange.value,
+        ambient: ambientRange.value,
+        offset: offsetRange.value,
+        accent: accentSelect.value,
+        lyricColor: lyricColorSelect.value,
+        videoMode: videoMode.value,
+        volume: volumeRange.value,
+        speed: speedSelect.value,
+        shuffle: state.shuffle,
+        autoNext: state.autoNext,
+        repeat: state.repeat
+      }));
+    }
+
+
+    const lyricPalettes = {
+      white:  { current: 'rgba(255,255,255,.98)', near: 'rgba(255,255,255,.62)', muted: 'rgba(255,255,255,.34)', past: 'rgba(255,255,255,.20)', glow: 'rgba(255,255,255,.18)' },
+      warm:   { current: 'rgba(255,246,224,.98)', near: 'rgba(255,231,196,.62)', muted: 'rgba(255,226,194,.34)', past: 'rgba(255,226,194,.20)', glow: 'rgba(255,210,150,.22)' },
+      theme:  { current: 'hsl(var(--accent))', near: 'hsla(var(--accent) / .68)', muted: 'hsla(var(--accent) / .36)', past: 'hsla(var(--accent) / .20)', glow: 'hsla(var(--accent) / .35)' },
+      blue:   { current: 'hsl(214 100% 88%)', near: 'hsl(214 100% 78% / .68)', muted: 'hsl(214 100% 78% / .34)', past: 'hsl(214 100% 78% / .18)', glow: 'hsl(214 100% 78% / .32)' },
+      violet: { current: 'hsl(268 100% 88%)', near: 'hsl(268 100% 82% / .68)', muted: 'hsl(268 100% 82% / .34)', past: 'hsl(268 100% 82% / .18)', glow: 'hsl(268 100% 82% / .34)' },
+      rose:   { current: 'hsl(334 100% 86%)', near: 'hsl(334 100% 78% / .68)', muted: 'hsl(334 100% 78% / .34)', past: 'hsl(334 100% 78% / .18)', glow: 'hsl(334 100% 78% / .34)' },
+      mint:   { current: 'hsl(157 84% 84%)', near: 'hsl(157 84% 74% / .68)', muted: 'hsl(157 84% 74% / .34)', past: 'hsl(157 84% 74% / .18)', glow: 'hsl(157 84% 74% / .30)' },
+      amber:  { current: 'hsl(42 100% 84%)', near: 'hsl(42 100% 74% / .68)', muted: 'hsl(42 100% 74% / .34)', past: 'hsl(42 100% 74% / .18)', glow: 'hsl(42 100% 74% / .30)' },
+      rainbow:{ current: 'rgba(255,255,255,.98)', near: 'rgba(255,255,255,.62)', muted: 'rgba(255,255,255,.34)', past: 'rgba(255,255,255,.20)', glow: 'rgba(255,255,255,.22)' }
+    };
+
+    function applyLyricColor() {
+      const root = document.documentElement;
+      const value = lyricColorSelect.value || 'white';
+      const palette = lyricPalettes[value] || lyricPalettes.white;
+      state.lyricColor = value;
+      app.classList.toggle('lyric-rainbow', value === 'rainbow');
+      root.style.setProperty('--lyric-current', palette.current);
+      root.style.setProperty('--lyric-near', palette.near);
+      root.style.setProperty('--lyric-muted', palette.muted);
+      root.style.setProperty('--lyric-past', palette.past);
+      root.style.setProperty('--lyric-glow', palette.glow);
+    }
+
+    function applyControls() {
+      const root = document.documentElement;
+      root.style.setProperty('--lyric-size', `clamp(32px, ${Number(fontRange.value) / 10}vw, ${fontRange.value}px)`);
+      root.style.setProperty('--glass', `rgba(255,255,255,${Number(glassRange.value) / 100})`);
+      root.style.setProperty('--glass-2', `rgba(255,255,255,${(Number(glassRange.value) + 6) / 100})`);
+      root.style.setProperty('--ambient', String(Number(ambientRange.value) / 100));
+      root.style.setProperty('--accent', accentSelect.value);
+      applyLyricColor();
+      syncDesktopPlayerState();
+      state.lyricOffset = Number(offsetRange.value);
+      offsetValue.textContent = `${state.lyricOffset.toFixed(1)}s`;
+      audio.volume = Number(volumeRange.value);
+      videoMain.volume = Number(volumeRange.value);
+      audio.playbackRate = Number(speedSelect.value);
+      videoMain.playbackRate = Number(speedSelect.value);
+      updateMode();
+      syncVideoPresentation();
+    }
+
+    function normalizeName(name) {
+      return name
+        .toLowerCase()
+        .normalize('NFKC')
+        .replace(/\.[^.]+$/, '')
+        .replace(/\b(lyrics?|lyric|lrc|official|audio|video|mv|live|cover|remaster(?:ed)?|version)\b/g, ' ')
+        .replace(/(歌词|字幕|官方|现场|翻唱|伴奏|纯音乐|视频|音频|完整版|剪辑版)/g, ' ')
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+    function prettyName(name) { return name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim(); }
+    function escapeHtml(s) { return String(s).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[ch])); }
+
+    const CJK_LYRIC_RE = /[\u3400-\u9FFF\uF900-\uFAFF\u3040-\u30FF\uAC00-\uD7AF]/;
+    const LATIN_LYRIC_RE = /[A-Za-z]/;
+    const SOFT_END_WORD_RE = /^(and|or|but|the|a|an|to|of|in|on|at|for|with|from|that|this|your|my|our|is|are|was|were|be|been|am)$/i;
+
+    function normalizeLyricTextForBreak(text) {
+      return String(text || '')
+        .replace(/\\n/g, '\n')
+        .replace(/\r\n?/g, '\n')
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/[\u00A0\u3000]/g, ' ')
+        .replace(/[ \t\f\v]+/g, ' ')
+        .replace(/ *\n+ */g, '\n')
+        .trim();
+    }
+
+    function lyricVisualWidth(text) {
+      return Array.from(String(text || '')).reduce((sum, ch) => {
+        const code = ch.codePointAt(0) || 0;
+        if (code <= 31) return sum;
+        if (/\s/.test(ch)) return sum + .6;
+        return sum + (code <= 127 ? 1 : 2);
+      }, 0);
+    }
+
+    function splitByVisualWidth(text, maxWidth = 32, maxLines = 3) {
+      const chars = Array.from(text);
+      const parts = [];
+      let buf = '';
+      let width = 0;
+      for (const ch of chars) {
+        const w = lyricVisualWidth(ch);
+        if (buf && width + w > maxWidth && parts.length < maxLines - 1) {
+          parts.push(buf.trim());
+          buf = ch;
+          width = w;
+        } else {
+          buf += ch;
+          width += w;
+        }
+      }
+      if (buf.trim()) parts.push(buf.trim());
+      return parts.filter(Boolean);
+    }
+
+    function explicitLyricSegments(raw) {
+      return raw
+        .split(/\n+|\s*[|｜]\s*|\s+\/\s+|\s*／\s*|\s*\/\/\s*/)
+        .map(part => part.trim())
+        .filter(Boolean);
+    }
+
+    function splitSpeakerSections(raw) {
+      const normalized = raw.replace(/\s+(?=(?:男|女|合唱|合|主唱|和声|旁白|Rap|RAP|Verse|Chorus|Bridge)\s*[:：])/g, '\n');
+      const parts = normalized.split('\n').map(s => s.trim()).filter(Boolean);
+      return parts.length > 1 ? parts : null;
+    }
+
+    function splitTrailingParenthetical(raw) {
+      const match = raw.match(/^(.{2,}?)\s*([（(【\[].{2,}?[）)】\]])$/u);
+      if (!match) return null;
+      const main = match[1].trim();
+      const note = match[2].trim();
+      if (!main || !note) return null;
+      const mixed = (CJK_LYRIC_RE.test(main) && LATIN_LYRIC_RE.test(note)) || (LATIN_LYRIC_RE.test(main) && CJK_LYRIC_RE.test(note));
+      if (mixed || lyricVisualWidth(raw) > 34 || lyricVisualWidth(note) > 16) return [main, note];
+      return null;
+    }
+
+    function splitLeadingCue(raw) {
+      const match = raw.match(/^([（(【\[]?(?:男|女|合唱|合|主唱|和声|旁白|Rap|RAP|Verse|Chorus|Bridge)[）)】\]]?\s*[:：]?)\s*(.{6,})$/u);
+      if (!match) return null;
+      const cue = match[1].trim();
+      const rest = match[2].trim();
+      if (lyricVisualWidth(raw) > 34 && lyricVisualWidth(cue) <= 12) return [cue, rest];
+      return null;
+    }
+
+    function splitBilingualLine(raw) {
+      if (!(CJK_LYRIC_RE.test(raw) && LATIN_LYRIC_RE.test(raw))) return null;
+      const patterns = [
+        /^(.+?[\u3400-\u9FFF\uF900-\uFAFF\u3040-\u30FF\uAC00-\uD7AF][，,、。.!！?？]?)\s+([A-Za-z][\s\S]+)$/u,
+        /^([A-Za-z][\s\S]+?[.!?]?)\s+([\u3400-\u9FFF\uF900-\uFAFF\u3040-\u30FF\uAC00-\uD7AF][\s\S]+)$/u
+      ];
+      for (const re of patterns) {
+        const match = raw.match(re);
+        if (!match) continue;
+        const a = match[1].trim();
+        const b = match[2].trim();
+        if (lyricVisualWidth(a) >= 5 && lyricVisualWidth(b) >= 5) return [a, b];
+      }
+      return null;
+    }
+
+    function lineWidthWords(words, start, end) {
+      return lyricVisualWidth(words.slice(start, end).join(' '));
+    }
+
+    function scoreWordSegments(words, cuts, target) {
+      const points = [0, ...cuts, words.length];
+      let score = 0;
+      for (let i = 0; i < points.length - 1; i++) {
+        const width = lineWidthWords(words, points[i], points[i + 1]);
+        score += Math.abs(width - target);
+        if (width < target * .48) score += 6;
+        if (width > 40) score += (width - 40) * 1.8;
+        const last = words[points[i + 1] - 1] || '';
+        if (SOFT_END_WORD_RE.test(last)) score += 4;
+      }
+      return score;
+    }
+
+    function wrapWordsBalanced(text, maxLines = 2) {
+      const words = text.trim().split(/\s+/).filter(Boolean);
+      if (words.length <= 1) return [text.trim()];
+      const total = lyricVisualWidth(words.join(' '));
+      const lineCount = Math.min(maxLines, total > 82 && words.length >= 9 ? 3 : 2, words.length);
+      const target = total / lineCount;
+      let bestCuts = [];
+      let bestScore = Infinity;
+
+      if (lineCount === 2) {
+        for (let i = 1; i < words.length; i++) {
+          const score = scoreWordSegments(words, [i], target);
+          if (score < bestScore) { bestScore = score; bestCuts = [i]; }
+        }
+      } else {
+        for (let i = 1; i < words.length - 1; i++) {
+          for (let j = i + 1; j < words.length; j++) {
+            const score = scoreWordSegments(words, [i, j], target);
+            if (score < bestScore) { bestScore = score; bestCuts = [i, j]; }
+          }
+        }
+      }
+
+      const points = [0, ...bestCuts, words.length];
+      return points.slice(0, -1).map((p, i) => words.slice(p, points[i + 1]).join(' ')).filter(Boolean);
+    }
+
+    function splitAtPunctuation(text, maxLines = 2) {
+      const candidates = [];
+      const chars = Array.from(text);
+      const total = lyricVisualWidth(text);
+      let width = 0;
+      chars.forEach((ch, i) => {
+        width += lyricVisualWidth(ch);
+        if (/[，,、；;：:。.!！?？…]/.test(ch) && i > 1 && i < chars.length - 2) {
+          const ratio = width / total;
+          const score = Math.abs(ratio - .52) + (ratio < .28 || ratio > .76 ? .45 : 0);
+          candidates.push({ index: i + 1, score });
+        }
+      });
+      if (!candidates.length) return [text.trim()];
+      candidates.sort((a, b) => a.score - b.score);
+      const cut = candidates[0].index;
+      const first = chars.slice(0, cut).join('').trim();
+      const second = chars.slice(cut).join('').trim();
+      if (!first || !second) return [text.trim()];
+      if (maxLines <= 2 || lyricVisualWidth(second) <= 34) return [first, second];
+      return [first, ...smartBreakLyricText(second, maxLines - 1)];
+    }
+
+    function splitCjkByPhrase(text, maxLines = 2) {
+      const chars = Array.from(text);
+      const total = lyricVisualWidth(text);
+      const target = total / Math.min(maxLines, total > 72 ? 3 : 2);
+      const candidates = [];
+      let width = 0;
+      chars.forEach((ch, i) => {
+        width += lyricVisualWidth(ch);
+        const next = chars[i + 1] || '';
+        const goodBoundary = /[的地得了着过吗呢吧啊呀啦和与及或但而就都也又还再才在是]/.test(ch) || /[我你他她它们谁何这那一不没会能想爱听看说走去来回把被让给对从向]/.test(next);
+        if (i > 2 && i < chars.length - 3 && goodBoundary) {
+          candidates.push({ index: i + 1, score: Math.abs(width - target) + (width < target * .55 ? 8 : 0) });
+        }
+      });
+      if (!candidates.length) return splitByVisualWidth(text, total > 72 ? 28 : 32, Math.min(maxLines, total > 72 ? 3 : 2));
+      candidates.sort((a, b) => a.score - b.score);
+      const cut = candidates[0].index;
+      const first = chars.slice(0, cut).join('').trim();
+      const second = chars.slice(cut).join('').trim();
+      if (!first || !second) return splitByVisualWidth(text, total > 72 ? 28 : 32, Math.min(maxLines, total > 72 ? 3 : 2));
+      if (lyricVisualWidth(second) > 38 && maxLines > 2) return [first, ...smartBreakLyricText(second, maxLines - 1)];
+      return [first, second];
+    }
+
+    function limitLyricLines(lines, maxLines) {
+      const clean = lines.map(line => String(line || '').trim()).filter(Boolean);
+      if (clean.length <= maxLines) return clean.length ? clean : [''];
+      return [...clean.slice(0, maxLines - 1), clean.slice(maxLines - 1).join(' · ')];
+    }
+
+    function smartBreakLyricText(text, maxLines = 3) {
+      const raw = normalizeLyricTextForBreak(text);
+      if (!raw) return [''];
+
+      const explicit = explicitLyricSegments(raw);
+      if (explicit.length > 1) {
+        const lines = explicit.flatMap(part => smartBreakLyricText(part, Math.max(1, Math.min(2, maxLines))));
+        return limitLyricLines(lines, maxLines);
+      }
+
+      const cue = splitLeadingCue(raw);
+      if (cue) return limitLyricLines([cue[0], ...smartBreakLyricText(cue[1], maxLines - 1)], maxLines);
+
+      const speaker = splitSpeakerSections(raw);
+      if (speaker) return limitLyricLines(speaker.flatMap(part => smartBreakLyricText(part, 2)), maxLines);
+
+      const paren = splitTrailingParenthetical(raw);
+      if (paren) return limitLyricLines([paren[0], ...smartBreakLyricText(paren[1], maxLines - 1)], maxLines);
+
+      const bilingual = splitBilingualLine(raw);
+      if (bilingual) return limitLyricLines(bilingual.flatMap(part => smartBreakLyricText(part, 2)), maxLines);
+
+      const width = lyricVisualWidth(raw);
+      if (width <= 34) return [raw];
+
+      const punct = splitAtPunctuation(raw, Math.min(maxLines, width > 70 ? 3 : 2));
+      if (punct.length > 1) return limitLyricLines(punct, maxLines);
+
+      if (/\s/.test(raw)) {
+        const lines = Math.min(maxLines, width > 82 ? 3 : 2);
+        return limitLyricLines(wrapWordsBalanced(raw, lines), maxLines);
+      }
+
+      if (CJK_LYRIC_RE.test(raw)) {
+        return limitLyricLines(splitCjkByPhrase(raw, Math.min(maxLines, width > 72 ? 3 : 2)), maxLines);
+      }
+
+      return limitLyricLines(splitByVisualWidth(raw, width > 72 ? 28 : 34, Math.min(maxLines, width > 72 ? 3 : 2)), maxLines);
+    }
+
+    function renderLyricText(text) {
+      return smartBreakLyricText(text)
+        .map((part, index) => `<span class="lyric-part ${index ? 'subtle' : ''}">${escapeHtml(part)}</span>`)
+        .join('');
+    }
+    function formatTime(sec) {
+      if (!Number.isFinite(sec)) return '00:00';
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      return h ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+    function formatBytes(bytes) {
+      const u = ['B','KB','MB','GB'];
+      let n = bytes || 0, i = 0;
+      while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+      return `${n.toFixed(n >= 10 || i === 0 ? 0 : 1)} ${u[i]}`;
+    }
+    function toastMsg(text) {
+      toast.textContent = text;
+      toast.classList.add('show');
+      clearTimeout(toastMsg.timer);
+      toastMsg.timer = setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    function parseStamp(raw) {
+      const clean = raw.trim().replace(',', '.');
+      const parts = clean.split(':').map(Number);
+      if (parts.some(Number.isNaN)) return null;
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      return null;
+    }
+
+    function parseLRC(text) {
+      const result = [];
+      const pattern = /\[((?:\d{1,2}:)?\d{1,2}:\d{2}(?:[.,]\d{1,3})?)\]([^\n\r]*)/g;
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const time = parseStamp(match[1]);
+        const line = match[2].trim();
+        if (time !== null && line) result.push({ time, text: line });
+      }
+      return result.sort((a,b) => a.time - b.time);
+    }
+
+    function parseTimedBlocks(text) {
+      const result = [];
+      const blocks = text.replace(/\r/g, '').replace(/^WEBVTT.*?\n/i, '').split(/\n\s*\n/);
+      for (const block of blocks) {
+        const lines = block.split('\n').map(x => x.trim()).filter(Boolean);
+        const timeLine = lines.find(line => line.includes('-->'));
+        if (!timeLine) continue;
+        const start = parseStamp(timeLine.split('-->')[0]);
+        const idx = lines.indexOf(timeLine);
+        const body = lines.slice(idx + 1).filter(x => !/^\d+$/.test(x)).join(' / ').replace(/<[^>]+>/g, '').trim();
+        if (start !== null && body) result.push({ time: start, text: body });
+      }
+      return result.sort((a,b) => a.time - b.time);
+    }
+
+    function parsePlain(text) {
+      const lines = text
+        .split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(x => x && !/^\[(ar|ti|al|by|offset):/i.test(x) && !/^\d+$/.test(x));
+      return lines.map((text, i) => ({ time: i * 4, text }));
+    }
+
+    function parseLyrics(text) {
+      const lrc = parseLRC(text);
+      if (lrc.length) return { timed: true, lines: lrc };
+      const blocks = parseTimedBlocks(text);
+      if (blocks.length) return { timed: true, lines: blocks };
+      const plain = parsePlain(text);
+      return { timed: false, lines: plain };
+    }
+
+    function distributePlain(record, duration) {
+      if (!record || record.timed) return record ? record.lines : [];
+      const source = record.lines || [];
+      if (!source.length) return [];
+      const safeDuration = Number.isFinite(duration) && duration > 8 ? duration : Math.max(12, source.length * 4);
+      const start = Math.min(1.5, safeDuration * .04);
+      const end = Math.max(start + 1, safeDuration * .94);
+      const step = source.length === 1 ? 0 : (end - start) / (source.length - 1);
+      return source.map((line, i) => ({ time: start + i * step, text: line.text }));
+    }
+
+    const mediaExtPattern = /\.(mp3|m4a|aac|wav|flac|ogg|oga|opus|mp4|m4v|mov|webm|ogv|mkv|avi)$/i;
+    const videoExtPattern = /\.(mp4|m4v|mov|webm|ogv|mkv|avi)$/i;
+
+    function isMediaFile(file) {
+      return file.type.startsWith('audio/') || file.type.startsWith('video/') || mediaExtPattern.test(file.name);
+    }
+
+    function isVideoFile(file) {
+      return file.type.startsWith('video/') || videoExtPattern.test(file.name);
+    }
+
+    function handleFiles(fileList) {
+      const files = [...fileList];
+      const media = files.filter(isMediaFile);
+      const lyric = files.filter(f => /\.(lrc|txt|srt|vtt)$/i.test(f.name));
+      const addedTracks = media.length ? addTracks(media) : [];
+      if (lyric.length) addLyricFiles(lyric, {
+        mode: media.length ? 'batch' : 'manual',
+        targetTracks: addedTracks
+      });
+      if (!media.length && !lyric.length) toastMsg('没有识别到媒体或歌词文件');
+    }
+
+    function addTracks(files) {
+      const added = [];
+      for (const file of files) {
+        const track = {
+          id: state.nextTrackId++,
+          file,
+          url: URL.createObjectURL(file),
+          kind: isVideoFile(file) ? 'video' : 'audio',
+          key: normalizeName(file.name),
+          title: prettyName(file.name),
+          lyricRecord: null
+        };
+        state.tracks.push(track);
+        added.push(track);
+      }
+      renderPlaylist();
+      const hasMkv = files.some(f => /\.mkv$/i.test(f.name));
+      toastMsg(hasMkv ? `已导入 ${files.length} 个媒体；MKV 能否播放取决于浏览器编码支持` : `已导入 ${files.length} 个媒体`);
+      if (state.currentIndex === -1) loadTrack(0, false);
+      return added;
+    }
+
+    function uniqueLyricStoreKey(baseKey, fileName) {
+      let key = baseKey || normalizeName(fileName || 'lyrics') || 'lyrics';
+      let storeKey = key;
+      let index = 2;
+      while (state.lyricStore.has(storeKey)) {
+        storeKey = `${key} ${index++}`;
+      }
+      return storeKey;
+    }
+
+    function assignLyricToTrack(track, record) {
+      if (!track || !record) return false;
+      if (track.lyricRecord && track.lyricRecord !== record && track.lyricRecord.assignedTrackId === track.id) {
+        delete track.lyricRecord.assignedTrackId;
+      }
+      if (record.assignedTrackId && record.assignedTrackId !== track.id) {
+        const previousTrack = state.tracks.find(t => t.id === record.assignedTrackId);
+        if (previousTrack && previousTrack.lyricRecord === record) {
+          previousTrack.lyricRecord = null;
+          state.lyricOverrides.delete(previousTrack.id);
+        }
+      }
+      record.assignedTrackId = track.id;
+      track.lyricRecord = record;
+      state.lyricOverrides.set(track.id, record);
+      return true;
+    }
+
+    function findBestTrackForLyric(record, tracks = state.tracks) {
+      const candidates = tracks.filter(Boolean);
+      let bestTrack = null;
+      let bestScore = 0;
+      const lyricKey = record.key || normalizeName(record.name || '');
+      for (const track of candidates) {
+        const score = lyricScore(track.key, lyricKey);
+        if (score > bestScore) {
+          bestScore = score;
+          bestTrack = track;
+        }
+      }
+      return { track: bestTrack, score: bestScore };
+    }
+
+    function assignImportedLyrics(records, tracks, allowSingleFallback = false) {
+      const candidates = tracks.filter(Boolean);
+      if (!records.length || !candidates.length) return 0;
+      let assigned = 0;
+      const usedTracks = new Set();
+      for (const record of records) {
+        let bestTrack = null;
+        let bestScore = 0;
+        const lyricKey = record.key || normalizeName(record.name || '');
+        for (const track of candidates) {
+          if (usedTracks.has(track.id)) continue;
+          const score = lyricScore(track.key, lyricKey);
+          if (score > bestScore) { bestScore = score; bestTrack = track; }
+        }
+        if (bestTrack && bestScore >= 56) {
+          assignLyricToTrack(bestTrack, record);
+          usedTracks.add(bestTrack.id);
+          assigned++;
+        }
+      }
+      if (!assigned && allowSingleFallback && records.length === 1 && candidates.length === 1) {
+        assignLyricToTrack(candidates[0], records[0]);
+        assigned = 1;
+      }
+      return assigned;
+    }
+
+    async function addLyricFiles(files, options = {}) {
+      let count = 0;
+      const imported = [];
+      for (const file of files) {
+        const text = await file.text();
+        const record = parseLyrics(text);
+        if (!record.lines.length) continue;
+        record.name = file.name;
+        record.key = normalizeName(file.name);
+        const storeKey = uniqueLyricStoreKey(record.key, file.name);
+        state.lyricStore.set(storeKey, record);
+        imported.push(record);
+        count++;
+      }
+
+      const currentTrack = state.tracks[state.currentIndex];
+      let assigned = 0;
+      if (imported.length) {
+        if (options.mode === 'batch') {
+          const targets = options.targetTracks && options.targetTracks.length ? options.targetTracks : state.tracks;
+          assigned = assignImportedLyrics(imported, targets, true);
+        } else if (imported.length === 1) {
+          const best = findBestTrackForLyric(imported[0], state.tracks);
+          if (best.track && best.score >= 56) {
+            assignLyricToTrack(best.track, imported[0]);
+            assigned = 1;
+          } else if (currentTrack) {
+            assignLyricToTrack(currentTrack, imported[0]);
+            assigned = 1;
+          }
+        } else {
+          assigned = assignImportedLyrics(imported, state.tracks, false);
+        }
+      }
+
+      renderPlaylist();
+      if (state.currentIndex >= 0) applyLyricsForCurrentTrack();
+      const suffix = assigned ? `，已匹配 ${assigned} 首曲目` : '';
+      toastMsg(count ? `已导入 ${count} 个歌词${suffix}` : '没有识别到有效歌词');
+    }
+
+    function lyricScore(trackKey, lyricKey) {
+      if (trackKey === lyricKey) return 100;
+      const a = trackKey.replace(/\s+/g, '');
+      const b = lyricKey.replace(/\s+/g, '');
+      if (!a || !b) return 0;
+      if (a === b) return 96;
+      if (a.includes(b) || b.includes(a)) return 84;
+
+      const aw = new Set(trackKey.split(' ').filter(Boolean));
+      const bw = lyricKey.split(' ').filter(Boolean);
+      let wordHit = 0;
+      for (const w of bw) if (aw.has(w)) wordHit++;
+      const wordScore = wordHit ? 50 + wordHit * 8 : 0;
+
+      const shortChars = [...new Set([...b])];
+      let charHit = 0;
+      for (const ch of shortChars) if (a.includes(ch)) charHit++;
+      const ratio = charHit / Math.max(1, shortChars.length);
+      const charScore = ratio >= .48 ? 46 + ratio * 42 : 0;
+
+      return Math.min(94, Math.max(wordScore, charScore));
+    }
+
+    function matchLyricRecord(track) {
+      if (!track) return null;
+      if (track.lyricRecord) return track.lyricRecord;
+      const manual = state.lyricOverrides.get(track.id);
+      if (manual) {
+        track.lyricRecord = manual;
+        return manual;
+      }
+      if (!state.lyricStore.size) return null;
+      let best = null;
+      let bestScore = 0;
+      for (const [key, record] of state.lyricStore.entries()) {
+        if (record.assignedTrackId && record.assignedTrackId !== track.id) continue;
+        if (record.assignedTrackId === track.id) return record;
+        const matchKey = record.key || key;
+        const score = lyricScore(track.key, matchKey);
+        if (score > bestScore) { bestScore = score; best = record; }
+      }
+      const threshold = state.tracks.length > 1 && state.lyricStore.size > 1 ? 72 : 56;
+      if (best && bestScore >= threshold) return best;
+      if (state.lyricStore.size === 1 && state.tracks.length === 1) return [...state.lyricStore.values()][0];
+      return null;
+    }
+
+    function lyricStatusLabel(record) {
+      if (!record) return '无歌词';
+      return record.timed ? 'LRC' : 'TXT';
+    }
+
+    function chooseLyricForTrack(index) {
+      const track = state.tracks[index];
+      if (!track) return;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.lrc,.txt,.srt,.vtt';
+      input.multiple = false;
+      input.className = 'file-input';
+      document.body.appendChild(input);
+      const cleanup = () => setTimeout(() => input.remove(), 0);
+      input.addEventListener('change', async e => {
+        const file = e.target.files && e.target.files[0];
+        if (file) await replaceLyricForTrack(index, file);
+        e.target.value = '';
+        cleanup();
+      }, { once: true });
+      input.addEventListener('cancel', cleanup, { once: true });
+      input.click();
+    }
+
+    async function replaceLyricForTrack(index, file) {
+      const track = state.tracks[index];
+      if (!track || !file) return false;
+      const text = await file.text();
+      const record = parseLyrics(text);
+      if (!record.lines.length) {
+        toastMsg('没有识别到有效歌词，请检查 LRC / SRT / VTT / TXT 内容');
+        return false;
+      }
+      record.name = file.name;
+      record.key = normalizeName(file.name) || track.key;
+      record.replacedAt = Date.now();
+      state.lyricStore.set(uniqueLyricStoreKey(record.key, file.name), record);
+      assignLyricToTrack(track, record);
+      renderPlaylist();
+      if (index === state.currentIndex) applyLyricsForCurrentTrack();
+      toastMsg(`已为《${track.title}》更换歌词`);
+      return true;
+    }
+
+    function renderPlaylist() {
+      mediaCount.textContent = `${state.tracks.length} 首`;
+      const q = state.search.trim().toLowerCase();
+      playlist.innerHTML = '';
+      if (!state.tracks.length) {
+        playlist.innerHTML = '<div class="empty-card">播放列表为空。拖入多首音频或视频后，可在这里搜索、移除、随机播放。每首歌右侧都有“更换歌词”，导错歌词后可单独重新导入。</div>';
+        return;
+      }
+      const visible = state.tracks.map((track, index) => ({ track, index })).filter(({track}) => !q || track.title.toLowerCase().includes(q) || track.file.name.toLowerCase().includes(q));
+      if (!visible.length) {
+        playlist.innerHTML = '<div class="empty-card">没有匹配的曲目。</div>';
+        return;
+      }
+      for (const { track, index } of visible) {
+        const record = matchLyricRecord(track);
+        const item = document.createElement('div');
+        item.className = `track ${index === state.currentIndex ? 'active' : ''}`;
+        item.setAttribute('role', 'button');
+        item.tabIndex = 0;
+        item.innerHTML = `<div class="kind">${track.kind === 'video' ? '映' : '音'}</div>
+          <div class="t-name"><strong>${escapeHtml(track.title)}</strong><small>${track.kind.toUpperCase()} · ${formatBytes(track.file.size)}</small></div>
+          <div class="chip" title="当前歌词状态">${lyricStatusLabel(record)}</div>
+          <button class="lyric-action ${record ? '' : 'empty'}" type="button" title="为这首歌单独重新导入歌词">更换歌词</button>
+          <span class="remove" title="移除">×</span>`;
+        item.addEventListener('click', e => {
+          if (e.target.closest('.remove, .lyric-action')) return;
+          loadTrack(index, true);
+        });
+        item.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            loadTrack(index, true);
+          }
+        });
+        item.querySelector('.lyric-action').addEventListener('click', e => { e.stopPropagation(); chooseLyricForTrack(index); });
+        item.querySelector('.remove').addEventListener('click', e => { e.stopPropagation(); removeTrack(index); });
+        playlist.appendChild(item);
+      }
+    }
+
+
+    function syncVideoPresentation() {
+      const track = state.tracks[state.currentIndex];
+      const isVideo = !!track && track.kind === 'video';
+      const mode = videoMode ? videoMode.value : 'auto';
+      state.videoMode = mode;
+      stage.classList.remove('video-movie', 'video-subtitle', 'video-clean', 'video-lyric-overlay');
+      if (!isVideo) return;
+      stage.classList.add('video-movie');
+      if (mode === 'hidden') {
+        stage.classList.add('video-clean');
+      } else if (mode === 'float') {
+        stage.classList.add('video-lyric-overlay');
+      } else if (mode === 'subtitle' || (mode === 'auto' && state.activeLyrics.length)) {
+        stage.classList.add('video-subtitle');
+      } else {
+        stage.classList.add('video-clean');
+      }
+    }
+
+    function renderLyrics(lines, sample = false) {
+      state.activeLyrics = lines || [];
+      state.currentLine = -1;
+      if (!state.activeLyrics.length) {
+        const currentTrack = state.tracks[state.currentIndex];
+        if (currentTrack && currentTrack.kind === 'video') {
+          lyricsBox.innerHTML = '<div class="empty-lyrics"><h2>暂无字幕。</h2><p>电影建议导入同名 SRT/VTT 字幕；MV 建议导入同名 LRC 歌词。也可以在“视频模式”中选择“只看视频”。</p></div>';
+        } else {
+          lyricsBox.innerHTML = '<div class="empty-lyrics"><h2>暂无匹配歌词。</h2><p>导入同名 LRC/SRT/VTT/TXT，或点击左侧“粘贴歌词文本”。音乐模式可进入“透明歌词”全屏浮动播放。</p></div>';
+        }
+        syncVideoPresentation();
+        syncDesktopPlayerState();
+        return;
+      }
+      lyricsBox.innerHTML = state.activeLyrics.map((line, i) => `<div class="line" data-i="${i}">${renderLyricText(line.text)}</div>`).join('');
+      updateLyric(sample ? 0 : (state.activeMedia.currentTime || 0) + state.lyricOffset, true);
+      syncVideoPresentation();
+      syncDesktopPlayerState();
+    }
+
+    function updateLyric(time, force = false) {
+      if (!state.activeLyrics.length) return;
+      let idx = state.activeLyrics.findIndex((line, i) => {
+        const next = state.activeLyrics[i + 1];
+        return time >= line.time && (!next || time < next.time);
+      });
+      if (idx < 0) idx = 0;
+      if (idx === state.currentLine && !force) return;
+      state.currentLine = idx;
+      const mode = lyricMode.value;
+      const lines = [...lyricsBox.querySelectorAll('.line')];
+      lines.forEach((el, i) => {
+        const d = Math.abs(i - idx);
+        el.classList.toggle('current', i === idx);
+        el.classList.toggle('near', d === 1);
+        el.classList.toggle('past', i < idx);
+        el.style.display = mode === 'cinema' ? (d <= 1 ? 'block' : 'none') : '';
+      });
+      syncDesktopPlayerState();
+    }
+
+    function loadTrack(index, shouldPlay = false) {
+      if (!state.tracks.length) return;
+      state.currentIndex = (index + state.tracks.length) % state.tracks.length;
+      const track = state.tracks[state.currentIndex];
+      pauseAll();
+      state.currentLine = -1;
+      stage.classList.toggle('has-video', track.kind === 'video');
+      if (track.kind === 'video') {
+        videoMain.src = track.url;
+        videoGhost.src = track.url;
+        videoGhost.muted = true;
+        state.activeMedia = videoMain;
+      } else {
+        audio.src = track.url;
+        state.activeMedia = audio;
+        videoMain.removeAttribute('src');
+        videoGhost.removeAttribute('src');
+        videoMain.load();
+        videoGhost.load();
+      }
+      state.activeMedia.volume = Number(volumeRange.value);
+      state.activeMedia.playbackRate = Number(speedSelect.value);
+      bindMedia(state.activeMedia);
+      updateNow(track);
+      updateCdMini();
+      applyLyricsForCurrentTrack();
+      syncVideoPresentation();
+      updateMediaSession(track);
+      updateProgress();
+      renderPlaylist();
+      panel.classList.remove('open');
+      if (shouldPlay) playActive();
+    }
+
+    function bindMedia(media) {
+      media.onloadedmetadata = () => { updateProgress(); applyLyricsForCurrentTrack(true); };
+      media.ontimeupdate = tick;
+      media.onplay = () => { updatePlayButton(); startVisualizer(); statusText.textContent = '正在播放'; requestWakeLock(); };
+      media.onpause = () => { updatePlayButton(); statusText.textContent = '已暂停'; releaseWakeLock(); if (videoGhost) videoGhost.pause(); };
+      media.onended = handleEnded;
+      media.onerror = () => toastMsg('媒体无法播放：浏览器可能不支持该封装或编码。MKV 建议转为 MP4 / WebM');
+    }
+
+    function applyLyricsForCurrentTrack() {
+      const track = state.tracks[state.currentIndex];
+      const record = matchLyricRecord(track);
+      if (!record) { renderLyrics([]); statusText.textContent = '未匹配歌词'; return; }
+      const duration = state.activeMedia.duration || 0;
+      renderLyrics(distributePlain(record, duration));
+      const manual = !!track.lyricRecord || state.lyricOverrides.has(track.id);
+      statusText.textContent = manual ? '已绑定当前曲目歌词' : (record.timed ? '已匹配时间轴歌词' : '已生成临时时间轴');
+    }
+
+    function updateNow(track) {
+      trackTitle.textContent = track.title;
+      trackMeta.textContent = `${track.kind === 'video' ? '视频' : '音频'} · ${formatBytes(track.file.size)}${/\.mkv$/i.test(track.file.name) ? ' · MKV兼容取决于浏览器' : ''}`;
+      syncDesktopPlayerState();
+    }
+
+    function pauseAll() { audio.pause(); videoMain.pause(); videoGhost.pause(); }
+
+    function playActive() {
+      const media = state.activeMedia;
+      if (!media || !media.src) return;
+      if (media === videoMain && videoGhost.src) {
+        videoGhost.currentTime = videoMain.currentTime || 0;
+        videoGhost.play().catch(() => {});
+      }
+      media.play().catch(() => toastMsg('浏览器阻止了播放，请再次点击播放'));
+    }
+
+    function togglePlay() {
+      if (!state.tracks.length) return;
+      if (state.activeMedia.paused) playActive();
+      else { state.activeMedia.pause(); videoGhost.pause(); }
+    }
+
+    function updatePlayButton() {
+      playBtn.textContent = state.activeMedia && !state.activeMedia.paused ? 'Ⅱ' : '▶';
+      updateCdMini();
+      syncDesktopPlayerState();
+    }
+
+    function tick() {
+      if (state.activeMedia === videoMain && videoGhost.src && Math.abs((videoGhost.currentTime || 0) - (videoMain.currentTime || 0)) > .18) {
+        videoGhost.currentTime = videoMain.currentTime || 0;
+      }
+      updateProgress();
+      updateLyric((state.activeMedia.currentTime || 0) + state.lyricOffset);
+    }
+
+    function updateProgress() {
+      const media = state.activeMedia;
+      const current = media.currentTime || 0;
+      const duration = media.duration || 0;
+      seekFill.style.width = duration ? `${Math.min(100, current / duration * 100)}%` : '0%';
+      timeText.textContent = `${formatTime(current)} / ${formatTime(duration)}`;
+      updatePlayButton();
+    }
+
+    function handleEnded() {
+      if (state.repeat === 'one') { state.activeMedia.currentTime = 0; playActive(); return; }
+      if (!state.autoNext) return;
+      if (!state.shuffle && state.repeat === 'off' && state.currentIndex >= state.tracks.length - 1) { statusText.textContent = '播放结束'; return; }
+      nextTrack(true);
+    }
+
+    function nextTrack(shouldPlay = true) {
+      if (!state.tracks.length) return;
+      if (state.shuffle) {
+        let next = Math.floor(Math.random() * state.tracks.length);
+        if (state.tracks.length > 1 && next === state.currentIndex) next = (next + 1) % state.tracks.length;
+        loadTrack(next, shouldPlay);
+      } else loadTrack(state.currentIndex + 1, shouldPlay);
+    }
+
+    function prevTrack() {
+      if (!state.tracks.length) return;
+      if ((state.activeMedia.currentTime || 0) > 3) { state.activeMedia.currentTime = 0; return; }
+      loadTrack(state.currentIndex - 1, true);
+    }
+
+    function seekBy(seconds) {
+      const media = state.activeMedia;
+      if (!media || !Number.isFinite(media.duration)) return;
+      media.currentTime = Math.max(0, Math.min(media.duration, media.currentTime + seconds));
+      tick();
+    }
+
+    function seekRatio(clientX) {
+      const media = state.activeMedia;
+      if (!media || !media.duration) return;
+      const rect = seekBar.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      media.currentTime = ratio * media.duration;
+      tick();
+    }
+
+    function removeTrack(index) {
+      const wasCurrent = index === state.currentIndex;
+      const removed = state.tracks.splice(index, 1)[0];
+      if (removed) {
+        URL.revokeObjectURL(removed.url);
+        if (removed.lyricRecord && removed.lyricRecord.assignedTrackId === removed.id) {
+          delete removed.lyricRecord.assignedTrackId;
+        }
+        removed.lyricRecord = null;
+        state.lyricOverrides.delete(removed.id);
+      }
+      if (!state.tracks.length) {
+        pauseAll();
+        state.currentIndex = -1;
+        state.activeMedia = audio;
+        audio.removeAttribute('src');
+        videoMain.removeAttribute('src');
+        videoGhost.removeAttribute('src');
+        audio.load(); videoMain.load(); videoGhost.load();
+        stage.classList.remove('has-video', 'video-movie', 'video-subtitle', 'video-clean', 'video-lyric-overlay');
+      app.classList.remove('music-focus');
+        trackTitle.textContent = '尚未选择曲目';
+        trackMeta.textContent = '等待导入媒体';
+        statusText.textContent = '播放列表为空';
+        renderLyrics(sampleLyrics, true);
+        updateProgress();
+      } else if (wasCurrent) {
+        loadTrack(Math.min(index, state.tracks.length - 1), false);
+      } else if (index < state.currentIndex) {
+        state.currentIndex--;
+      }
+      renderPlaylist();
+      toastMsg('已移除曲目');
+    }
+
+    function clearTracks() {
+      if (!state.tracks.length) return;
+      state.tracks.forEach(t => {
+        URL.revokeObjectURL(t.url);
+        if (t.lyricRecord && t.lyricRecord.assignedTrackId === t.id) delete t.lyricRecord.assignedTrackId;
+        t.lyricRecord = null;
+      });
+      state.tracks = [];
+      state.lyricOverrides.clear();
+      state.currentIndex = -1;
+      state.search = '';
+      searchInput.value = '';
+      pauseAll();
+      audio.removeAttribute('src'); videoMain.removeAttribute('src'); videoGhost.removeAttribute('src');
+      audio.load(); videoMain.load(); videoGhost.load();
+      state.activeMedia = audio;
+      stage.classList.remove('has-video', 'video-movie', 'video-subtitle', 'video-clean', 'video-lyric-overlay');
+      app.classList.remove('music-focus');
+      trackTitle.textContent = '尚未选择曲目';
+      trackMeta.textContent = '等待导入媒体';
+      statusText.textContent = '播放列表已清空';
+      renderLyrics(sampleLyrics, true);
+      updateProgress();
+      renderPlaylist();
+      toastMsg('播放列表已清空');
+    }
+
+    const lyricModeClassNames = ['mode-cinema','mode-focus','mode-float','mode-orbit','mode-ticker'];
+
+    function setLyricVisualMode(mode) {
+      lyricsBox.classList.remove(...lyricModeClassNames);
+      lyricsBox.classList.add(`mode-${mode}`);
+    }
+
+    function restoreSelectedLyricMode() {
+      setLyricVisualMode(lyricMode.value);
+      updateLyric((state.activeMedia.currentTime || 0) + state.lyricOffset, true);
+    }
+
+    function updateMode() {
+      if (app.classList.contains('music-focus')) {
+        updateLyric((state.activeMedia.currentTime || 0) + state.lyricOffset, true);
+        return;
+      }
+      restoreSelectedLyricMode();
+    }
+
+    function updateToggles() {
+      shuffleBtn.classList.toggle('active', state.shuffle);
+      shuffleBtn.textContent = `随机：${state.shuffle ? '开' : '关'}`;
+      autoBtn.classList.toggle('active', state.autoNext);
+      autoBtn.textContent = `自动续播：${state.autoNext ? '开' : '关'}`;
+      repeatBtn.classList.toggle('active', state.repeat !== 'off');
+      repeatBtn.textContent = state.repeat === 'all' ? '循环：全部' : state.repeat === 'one' ? '循环：单曲' : '循环：关';
+      lyricsToggle.classList.toggle('active', state.lyricsVisible);
+      immersiveBtn.classList.toggle('active', app.classList.contains('immersive'));
+      muteBtn.classList.toggle('active', state.activeMedia.muted);
+      muteBtn.textContent = state.activeMedia.muted ? '静音' : '声音';
+    }
+
+    function cycleRepeat() {
+      state.repeat = state.repeat === 'all' ? 'one' : state.repeat === 'one' ? 'off' : 'all';
+      updateToggles(); saveSettings();
+    }
+
+    function buildVisualizer() {
+      visualizer.innerHTML = '';
+      state.bars = [];
+      for (let i = 0; i < 52; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'bar-stick';
+        visualizer.appendChild(bar);
+        state.bars.push(bar);
+      }
+    }
+
+    function startVisualizer() {
+      try {
+        if (!state.audioContext) state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (state.audioContext.state === 'suspended') state.audioContext.resume();
+        const media = state.activeMedia;
+        if (!state.sourceNodes.has(media)) {
+          const source = state.audioContext.createMediaElementSource(media);
+          const analyser = state.audioContext.createAnalyser();
+          analyser.fftSize = 128;
+          source.connect(analyser);
+          analyser.connect(state.audioContext.destination);
+          state.sourceNodes.set(media, analyser);
+        }
+        state.analyser = state.sourceNodes.get(media);
+        animateVisualizer();
+      } catch { animateFakeVisualizer(); }
+    }
+
+    function animateVisualizer() {
+      cancelAnimationFrame(state.raf);
+      const data = new Uint8Array(state.analyser ? state.analyser.frequencyBinCount : 0);
+      const loop = () => {
+        if (state.analyser && !state.activeMedia.paused) {
+          state.analyser.getByteFrequencyData(data);
+          state.bars.forEach((bar, i) => {
+            const value = data[i % data.length] || 0;
+            bar.style.height = `${7 + value / 255 * 62}px`;
+          });
+        }
+        state.raf = requestAnimationFrame(loop);
+      };
+      loop();
+    }
+
+    function animateFakeVisualizer() {
+      cancelAnimationFrame(state.raf);
+      const loop = () => {
+        const t = performance.now() / 380;
+        state.bars.forEach((bar, i) => { bar.style.height = `${8 + Math.abs(Math.sin(t + i * .34)) * 38}px`; });
+        state.raf = requestAnimationFrame(loop);
+      };
+      loop();
+    }
+
+    function updateMediaSession(track) {
+      if (!('mediaSession' in navigator) || !track) return;
+      navigator.mediaSession.metadata = new MediaMetadata({ title: track.title, artist: 'Local file', album: 'Floating Lyrics' });
+      const safe = (name, fn) => { try { navigator.mediaSession.setActionHandler(name, fn); } catch {} };
+      safe('play', playActive); safe('pause', togglePlay); safe('previoustrack', prevTrack); safe('nexttrack', () => nextTrack(true));
+      safe('seekbackward', () => seekBy(-10)); safe('seekforward', () => seekBy(10));
+    }
+
+    async function requestWakeLock() {
+      if (!('wakeLock' in navigator) || state.wakeLock) return;
+      try { state.wakeLock = await navigator.wakeLock.request('screen'); state.wakeLock.addEventListener('release', () => { state.wakeLock = null; }); } catch {}
+    }
+    async function releaseWakeLock() { try { if (state.wakeLock) await state.wakeLock.release(); } catch {} state.wakeLock = null; }
+
+    function applyPreset(name) {
+      if (name === 'gallery') { lyricMode.value = 'focus'; fontRange.value = 82; glassRange.value = 10; ambientRange.value = 70; }
+      if (name === 'stage') { lyricMode.value = 'float'; fontRange.value = 94; glassRange.value = 14; ambientRange.value = 100; }
+      if (name === 'reading') { lyricMode.value = 'cinema'; fontRange.value = 60; glassRange.value = 18; ambientRange.value = 78; }
+      applyControls(); saveSettings(); toastMsg(`已应用 ${name} 预设`);
+    }
+
+    function nudgeOffset(delta) {
+      const next = Math.max(-5, Math.min(5, Number(offsetRange.value) + delta));
+      offsetRange.value = next.toFixed(1);
+      applyControls(); saveSettings();
+      updateLyric((state.activeMedia.currentTime || 0) + state.lyricOffset, true);
+    }
+
+
+    function updateImmersiveControls() {
+      const on = app.classList.contains('immersive');
+      prevBtn.textContent = on ? '↺10' : '‹';
+      nextBtn.textContent = on ? '10↻' : '›';
+      prevBtn.title = on ? '后退 10 秒' : '上一首';
+      nextBtn.title = on ? '快进 10 秒' : '下一首';
+      immersiveBtn.textContent = on ? '退出' : '全屏';
+      if (musicFocusBtn) musicFocusBtn.textContent = app.classList.contains('music-focus') ? '退出透明' : '透明歌词';
+    }
+
+    function setImmersive(on) {
+      if (on) app.classList.remove('music-focus');
+      app.classList.toggle('immersive', on);
+      updateToggles();
+      resetIdle();
+      if (on) {
+        const target = document.documentElement;
+        if (!document.fullscreenElement && target.requestFullscreen) target.requestFullscreen().catch(() => {});
+        toastMsg('已进入全屏沉浸模式');
+      } else {
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      }
+    }
+
+
+    function updateCdMini() {
+      const track = state.tracks[state.currentIndex];
+      if (cdMiniTitle) cdMiniTitle.textContent = track ? track.title : 'Floating Lyrics';
+      if (cdMiniMeta) cdMiniMeta.textContent = state.activeMedia && !state.activeMedia.paused ? '正在播放 · 透明歌词模式' : '暂停 · 点击唱片播放';
+      app.classList.toggle('is-playing', !!state.activeMedia && !state.activeMedia.paused);
+      if (musicFocusBtn) musicFocusBtn.classList.toggle('active', app.classList.contains('music-focus'));
+    }
+
+    function setMusicFocus(on) {
+      if (on) {
+        const track = state.tracks[state.currentIndex];
+        if (track && track.kind === 'video') {
+          toastMsg('透明歌词模式主要用于音乐；视频建议用电影字幕或浮动歌词');
+          return;
+        }
+        app.classList.add('music-focus');
+        app.classList.remove('immersive');
+        state.musicFocus = true;
+        setLyricVisualMode('float');
+        const target = document.documentElement;
+        if (!document.fullscreenElement && target.requestFullscreen) target.requestFullscreen().catch(() => {});
+        toastMsg('已进入音乐全屏透明歌词模式');
+      } else {
+        app.classList.remove('music-focus');
+        state.musicFocus = false;
+        restoreSelectedLyricMode();
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      }
+      updateToggles();
+      updateCdMini();
+    }
+
+    function resetIdle() {
+      app.classList.remove('idle');
+      clearTimeout(state.idleTimer);
+      if (app.classList.contains('immersive')) state.idleTimer = setTimeout(() => app.classList.add('idle'), 2200);
+    }
+
+    function openAboutPanel() {
+      aboutModal.classList.add('open');
+      closeAboutBtn.focus({ preventScroll: true });
+    }
+
+    function closeAboutPanel() {
+      aboutModal.classList.remove('open');
+      versionPill.focus({ preventScroll: true });
+    }
+
+
+    function isDesktopApp() {
+      return Boolean(window.elplayerDesktop && window.elplayerDesktop.isDesktop);
+    }
+
+    function setDesktopUiAvailable() {
+      if (desktopSettingsBtn) desktopSettingsBtn.hidden = !isDesktopApp();
+    }
+
+    function inferArtistFromTitle(title) {
+      const raw = String(title || '').trim();
+      const parts = raw.split(/\s[-–—|｜]\s/).map(x => x.trim()).filter(Boolean);
+      return parts.length >= 2 ? parts[0] : 'Local file';
+    }
+
+    function getVisibleLyricText(selector) {
+      const el = lyricsBox && lyricsBox.querySelector(selector);
+      return el ? el.innerText.replace(/\s+/g, ' ').trim() : '';
+    }
+
+    function buildDesktopPlayerState() {
+      const track = state.tracks[state.currentIndex];
+      const current = getVisibleLyricText('.line.current');
+      const near = getVisibleLyricText('.line.current + .line') || getVisibleLyricText('.line.near:not(.past)');
+      const fallbackLyric = track ? (track.kind === 'video' ? '视频播放中' : '音乐播放中') : '等待播放媒体';
+      const title = track ? track.title : 'Elplayer';
+      return {
+        title,
+        artist: track ? inferArtistFromTitle(track.title) : '等待播放',
+        meta: trackMeta ? trackMeta.textContent : '',
+        kind: track ? track.kind : 'none',
+        lyric: current || fallbackLyric,
+        nextLyric: near || '',
+        isPlaying: Boolean(state.activeMedia && !state.activeMedia.paused),
+        accent: accentSelect ? accentSelect.value : '214 100% 86%'
+      };
+    }
+
+    function syncDesktopPlayerState() {
+      if (!isDesktopApp()) return;
+      clearTimeout(state.desktopSyncTimer);
+      state.desktopSyncTimer = setTimeout(() => {
+        try { window.elplayerDesktop.sendPlayerState(buildDesktopPlayerState()); } catch {}
+      }, 40);
+    }
+
+    function renderDesktopSettings(settings) {
+      if (!settings) return;
+      if (desktopOverlayVisibleSwitch) desktopOverlayVisibleSwitch.checked = Boolean(settings.lyricsVisible);
+      if (desktopAlwaysOnTopSwitch) desktopAlwaysOnTopSwitch.checked = Boolean(settings.alwaysOnTop);
+      if (desktopClickThroughSwitch) desktopClickThroughSwitch.checked = Boolean(settings.clickThrough);
+      if (desktopLockedSwitch) desktopLockedSwitch.checked = Boolean(settings.locked);
+      if (desktopLaunchAtLoginSwitch) desktopLaunchAtLoginSwitch.checked = Boolean(settings.launchAtLogin);
+      if (desktopOverlayModeSelect) desktopOverlayModeSelect.value = settings.overlayMode === 'mini' ? 'mini' : 'lyrics';
+      if (desktopMiniSizeSelect) desktopMiniSizeSelect.value = settings.miniSize || 'medium';
+      if (desktopOpacityRange) desktopOpacityRange.value = String(settings.opacity ?? 88);
+      if (desktopOpacityValue) desktopOpacityValue.textContent = `${desktopOpacityRange.value}%`;
+      if (desktopFontSizeRange) desktopFontSizeRange.value = String(settings.fontSize ?? 42);
+      if (desktopFontSizeValue) desktopFontSizeValue.textContent = `${desktopFontSizeRange.value}px`;
+    }
+
+    async function refreshDesktopSettingsPanel() {
+      if (!isDesktopApp()) return;
+      try { renderDesktopSettings(await window.elplayerDesktop.getDesktopSettings()); } catch {}
+    }
+
+    async function patchDesktopSettings(patch) {
+      if (!isDesktopApp()) return;
+      try {
+        const settings = await window.elplayerDesktop.setDesktopSettings(patch);
+        renderDesktopSettings(settings);
+      } catch {
+        toastMsg('桌面设置同步失败，请重启应用后再试');
+      }
+    }
+
+    async function openDesktopSettings() {
+      if (!isDesktopApp()) {
+        toastMsg('桌面设置只在 Electron 桌面版中可用');
+        return;
+      }
+      desktopSettingsModal.classList.add('open');
+      await refreshDesktopSettingsPanel();
+    }
+
+    function closeDesktopSettings() {
+      desktopSettingsModal.classList.remove('open');
+    }
+
+    function setupDesktopSettingsPanel() {
+      setDesktopUiAvailable();
+      if (!desktopSettingsBtn || !desktopSettingsModal) return;
+      desktopSettingsBtn.addEventListener('click', openDesktopSettings);
+      closeDesktopSettingsBtn.addEventListener('click', closeDesktopSettings);
+      desktopApplyCloseBtn.addEventListener('click', closeDesktopSettings);
+      desktopSettingsModal.addEventListener('click', e => { if (e.target === desktopSettingsModal) closeDesktopSettings(); });
+
+      desktopOverlayVisibleSwitch.addEventListener('change', e => patchDesktopSettings({ lyricsVisible: e.target.checked }));
+      desktopAlwaysOnTopSwitch.addEventListener('change', e => patchDesktopSettings({ alwaysOnTop: e.target.checked }));
+      desktopClickThroughSwitch.addEventListener('change', e => patchDesktopSettings({ clickThrough: e.target.checked }));
+      desktopLockedSwitch.addEventListener('change', e => patchDesktopSettings({ locked: e.target.checked }));
+      desktopLaunchAtLoginSwitch.addEventListener('change', e => patchDesktopSettings({ launchAtLogin: e.target.checked }));
+      desktopOverlayModeSelect.addEventListener('change', e => {
+        if (window.elplayerDesktop) window.elplayerDesktop.setOverlayMode(e.target.value).then(renderDesktopSettings);
+      });
+      desktopMiniSizeSelect.addEventListener('change', e => patchDesktopSettings({ miniSize: e.target.value }));
+      desktopOpacityRange.addEventListener('input', e => { desktopOpacityValue.textContent = `${e.target.value}%`; });
+      desktopOpacityRange.addEventListener('change', e => patchDesktopSettings({ opacity: Number(e.target.value) }));
+      desktopFontSizeRange.addEventListener('input', e => { desktopFontSizeValue.textContent = `${e.target.value}px`; });
+      desktopFontSizeRange.addEventListener('change', e => patchDesktopSettings({ fontSize: Number(e.target.value) }));
+      desktopResetPositionBtn.addEventListener('click', async () => {
+        if (!isDesktopApp()) return;
+        const mode = desktopOverlayModeSelect.value || 'lyrics';
+        renderDesktopSettings(await window.elplayerDesktop.resetOverlayBounds(mode));
+        toastMsg('已重置当前桌面浮窗位置');
+      });
+      desktopShowMainBtn.addEventListener('click', () => {
+        if (window.elplayerDesktop) window.elplayerDesktop.windowCommand('show-main');
+      });
+    }
+
+    function setupDesktopBridge() {
+      setDesktopUiAvailable();
+      if (!isDesktopApp()) return;
+      window.elplayerDesktop.onControl(action => {
+        if (action === 'toggle-play') togglePlay();
+        if (action === 'previous-track') prevTrack();
+        if (action === 'next-track') nextTrack(true);
+        if (action === 'seek-backward') seekBy(-10);
+        if (action === 'seek-forward') seekBy(10);
+        if (action === 'toggle-lyrics-visible') lyricsToggle.click();
+        if (action === 'toggle-music-focus') setMusicFocus(!app.classList.contains('music-focus'));
+        if (action === 'open-desktop-settings') openDesktopSettings();
+      });
+      window.elplayerDesktop.onDesktopState(renderDesktopSettings);
+      refreshDesktopSettingsPanel();
+      syncDesktopPlayerState();
+    }
+
+
+    function openReleaseModal(modal) {
+      if (!modal) return;
+      modal.classList.add('open');
+    }
+
+    function closeReleaseModal(modal) {
+      if (!modal) return;
+      modal.classList.remove('open');
+    }
+
+    function markOnboardingSeen() {
+      localStorage.setItem(`elplayer.onboarding.seen.${APP_VERSION}`, '1');
+    }
+
+    function markReleaseNotesSeen() {
+      localStorage.setItem(`elplayer.releaseNotes.seen.${APP_VERSION}`, '1');
+      localStorage.setItem('elplayer.lastVersion', APP_VERSION);
+    }
+
+    function setupReleaseExperience() {
+      if (!onboardingModal || !releaseNotesModal) return;
+      onboardingStartBtn.addEventListener('click', () => {
+        markOnboardingSeen();
+        closeReleaseModal(onboardingModal);
+      });
+      onboardingUpdateBtn.addEventListener('click', () => {
+        markOnboardingSeen();
+        closeReleaseModal(onboardingModal);
+        openReleaseModal(releaseNotesModal);
+      });
+      releaseNotesCloseBtn.addEventListener('click', () => {
+        markReleaseNotesSeen();
+        closeReleaseModal(releaseNotesModal);
+      });
+      releaseNotesLaterBtn.addEventListener('click', () => {
+        closeReleaseModal(releaseNotesModal);
+      });
+      onboardingModal.addEventListener('click', e => { if (e.target === onboardingModal) { markOnboardingSeen(); closeReleaseModal(onboardingModal); } });
+      releaseNotesModal.addEventListener('click', e => { if (e.target === releaseNotesModal) { markReleaseNotesSeen(); closeReleaseModal(releaseNotesModal); } });
+
+      const params = new URLSearchParams(location.search);
+      if (params.has('release')) {
+        setTimeout(() => openReleaseModal(releaseNotesModal), 280);
+        return;
+      }
+      if (!localStorage.getItem(`elplayer.onboarding.seen.${APP_VERSION}`)) {
+        setTimeout(() => openReleaseModal(onboardingModal), 520);
+        return;
+      }
+      const lastVersion = localStorage.getItem('elplayer.lastVersion');
+      if (lastVersion && lastVersion !== APP_VERSION && !localStorage.getItem(`elplayer.releaseNotes.seen.${APP_VERSION}`)) {
+        setTimeout(() => openReleaseModal(releaseNotesModal), 520);
+      }
+      if (!lastVersion) localStorage.setItem('elplayer.lastVersion', APP_VERSION);
+    }
+
+    function updateMoleView() {
+      moleScore.textContent = String(moleState.score);
+      moleTime.textContent = String(moleState.time);
+      moleBest.textContent = String(moleState.best);
+      startMoleBtn.textContent = moleState.active ? '重新开始' : '开始游戏';
+    }
+
+    function clearMoleTimers() {
+      clearInterval(moleState.tickTimer);
+      clearTimeout(moleState.popTimer);
+      moleState.tickTimer = null;
+      moleState.popTimer = null;
+    }
+
+    function hideMole() {
+      if (moleState.current >= 0) moleHoles[moleState.current].classList.remove('active', 'hit');
+      moleState.current = -1;
+    }
+
+    function popMole() {
+      if (!moleState.active) return;
+      hideMole();
+      moleState.current = Math.floor(Math.random() * moleHoles.length);
+      moleHoles[moleState.current].classList.add('active');
+      const speed = Math.max(430, 920 - moleState.score * 18);
+      moleState.popTimer = setTimeout(popMole, speed);
+    }
+
+    function endMoleGame() {
+      moleState.active = false;
+      clearMoleTimers();
+      hideMole();
+      if (moleState.score > moleState.best) {
+        moleState.best = moleState.score;
+        localStorage.setItem('floatingLyricsMoleBest', String(moleState.best));
+        moleMessage.textContent = `新的最高分：${moleState.best}。`;
+      } else {
+        moleMessage.textContent = `本轮得分：${moleState.score}。`;
+      }
+      updateMoleView();
+    }
+
+    function startMoleGame() {
+      clearMoleTimers();
+      hideMole();
+      moleState.active = true;
+      moleState.score = 0;
+      moleState.time = 30;
+      moleMessage.textContent = '地鼠出现时点击它。';
+      updateMoleView();
+      popMole();
+      moleState.tickTimer = setInterval(() => {
+        moleState.time -= 1;
+        updateMoleView();
+        if (moleState.time <= 0) endMoleGame();
+      }, 1000);
+    }
+
+    function openMoleGame() {
+      closeAboutPanel();
+      moleModal.classList.add('open');
+      moleMessage.textContent = '点击“开始游戏”，地鼠会随机出现。';
+      updateMoleView();
+      startMoleBtn.focus({ preventScroll: true });
+      toastMsg('已进入打地鼠彩蛋');
+    }
+
+    function closeMoleGame() {
+      moleModal.classList.remove('open');
+      moleState.active = false;
+      clearMoleTimers();
+      hideMole();
+      versionPill.focus({ preventScroll: true });
+    }
+
+    function toggleAuthorMode() {
+      openMoleGame();
+    }
+
+
+
+    function cycleVideoMode() {
+      if (!videoMode) return;
+      const modes = ['auto', 'subtitle', 'hidden', 'float'];
+      const labels = { auto: '自动切换模式', subtitle: '电影字幕模式', hidden: '只看视频', float: '浮动歌词模式' };
+      const current = modes.indexOf(videoMode.value);
+      videoMode.value = modes[(current + 1) % modes.length];
+      applyControls();
+      saveSettings();
+      toastMsg(labels[videoMode.value]);
+    }
+
+    function copyEmbedCode() {
+      const code = '<iframe src="/index.html?embed=1" style="width:100%;height:780px;border:0;border-radius:24px;overflow:hidden;" allow="autoplay; fullscreen" allowfullscreen></iframe>';
+      navigator.clipboard?.writeText(code).then(() => toastMsg('已复制嵌入代码')).catch(() => {
+        lyricTextarea.value = code;
+        lyricModal.classList.add('open');
+        toastMsg('无法访问剪贴板，已放入文本框');
+      });
+    }
+
+    mediaInput.addEventListener('click', () => { mediaInput.value = ''; });
+    lyricInput.addEventListener('click', () => { lyricInput.value = ''; });
+    mediaInput.addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
+    lyricInput.addEventListener('change', e => { handleFiles(e.target.files); e.target.value = ''; });
+    ['dragenter','dragover'].forEach(type => {
+      dropZone.addEventListener(type, e => { e.preventDefault(); dropZone.classList.add('dragging'); });
+      window.addEventListener(type, e => e.preventDefault());
+    });
+    ['dragleave','drop'].forEach(type => dropZone.addEventListener(type, e => { e.preventDefault(); dropZone.classList.remove('dragging'); }));
+    dropZone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+    window.addEventListener('drop', e => e.preventDefault());
+
+    searchInput.addEventListener('input', e => { state.search = e.target.value; renderPlaylist(); });
+    playBtn.addEventListener('click', togglePlay);
+    prevBtn.addEventListener('click', () => app.classList.contains('immersive') ? seekBy(-10) : prevTrack());
+    nextBtn.addEventListener('click', () => app.classList.contains('immersive') ? seekBy(10) : nextTrack(true));
+    shuffleBtn.addEventListener('click', () => { state.shuffle = !state.shuffle; updateToggles(); saveSettings(); });
+    autoBtn.addEventListener('click', () => { state.autoNext = !state.autoNext; updateToggles(); saveSettings(); });
+    repeatBtn.addEventListener('click', cycleRepeat);
+    presets.forEach(btn => btn.addEventListener('click', () => applyPreset(btn.dataset.preset)));
+    drawerToggle.addEventListener('click', () => panel.classList.toggle('open'));
+    copyEmbedBtn.addEventListener('click', copyEmbedCode);
+
+
+    let versionPressTimer = null;
+    let versionLongPressTriggered = false;
+    const clearVersionPressTimer = () => {
+      if (versionPressTimer) clearTimeout(versionPressTimer);
+      versionPressTimer = null;
+    };
+    versionPill.addEventListener('click', () => {
+      if (versionLongPressTriggered) {
+        versionLongPressTriggered = false;
+        return;
+      }
+      openAboutPanel();
+    });
+    versionPill.addEventListener('pointerdown', () => {
+      versionLongPressTriggered = false;
+      clearVersionPressTimer();
+      versionPressTimer = setTimeout(() => {
+        versionLongPressTriggered = true;
+        toggleAuthorMode();
+        if (navigator.vibrate) navigator.vibrate(18);
+      }, 720);
+    });
+    ['pointerup','pointerleave','pointercancel'].forEach(type => {
+      versionPill.addEventListener(type, clearVersionPressTimer);
+    });
+    versionPill.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openAboutPanel();
+      }
+    });
+    closeAboutBtn.addEventListener('click', closeAboutPanel);
+    aboutModal.addEventListener('click', e => { if (e.target === aboutModal) closeAboutPanel(); });
+    startMoleBtn.addEventListener('click', startMoleGame);
+    closeMoleBtn.addEventListener('click', closeMoleGame);
+    moleModal.addEventListener('click', e => { if (e.target === moleModal) closeMoleGame(); });
+    moleHoles.forEach((hole, index) => {
+      hole.addEventListener('click', () => {
+        if (!moleState.active || index !== moleState.current) return;
+        moleState.score += 1;
+        hole.classList.add('hit');
+        setTimeout(() => hole.classList.remove('hit'), 140);
+        updateMoleView();
+        hideMole();
+        if (navigator.vibrate) navigator.vibrate(10);
+      });
+    });
+
+    seekBar.addEventListener('click', e => seekRatio(e.clientX));
+    seekBar.addEventListener('pointerdown', e => {
+      seekRatio(e.clientX);
+      const move = ev => seekRatio(ev.clientX);
+      const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    });
+
+    volumeRange.addEventListener('input', e => { const v = Number(e.target.value); audio.volume = v; videoMain.volume = v; saveSettings(); });
+    speedSelect.addEventListener('change', e => { const v = Number(e.target.value); audio.playbackRate = v; videoMain.playbackRate = v; saveSettings(); });
+    muteBtn.addEventListener('click', () => { const muted = !state.activeMedia.muted; audio.muted = muted; videoMain.muted = muted; updateToggles(); });
+    lyricsToggle.addEventListener('click', () => { state.lyricsVisible = !state.lyricsVisible; app.classList.toggle('lyrics-hidden', !state.lyricsVisible); updateToggles(); });
+    immersiveBtn.addEventListener('click', () => setImmersive(!app.classList.contains('immersive')));
+    musicFocusBtn.addEventListener('click', () => setMusicFocus(!app.classList.contains('music-focus')));
+    cdMiniPlay.addEventListener('click', togglePlay);
+    alignBackBtn.addEventListener('click', () => nudgeOffset(-0.1));
+    alignForwardBtn.addEventListener('click', () => nudgeOffset(0.1));
+    [lyricMode, videoMode, accentSelect, lyricColorSelect].forEach(el => el.addEventListener('change', () => { applyControls(); saveSettings(); }));
+    [fontRange, glassRange, ambientRange, offsetRange].forEach(el => el.addEventListener('input', () => { applyControls(); saveSettings(); updateLyric((state.activeMedia.currentTime || 0) + state.lyricOffset, true); }));
+
+    pasteLyricBtn.addEventListener('click', () => { lyricTextarea.value = ''; lyricModal.classList.add('open'); lyricTextarea.focus(); });
+    closeModalBtn.addEventListener('click', () => lyricModal.classList.remove('open'));
+    lyricModal.addEventListener('click', e => { if (e.target === lyricModal) lyricModal.classList.remove('open'); });
+    applyLyricTextBtn.addEventListener('click', () => {
+      const record = parseLyrics(lyricTextarea.value);
+      if (!record.lines.length) { toastMsg('没有识别到有效歌词'); return; }
+      const track = state.tracks[state.currentIndex];
+      const key = track ? track.key : 'pasted lyrics';
+      record.name = track ? `${track.title}.pasted` : 'pasted';
+      record.key = key;
+      state.lyricStore.set(uniqueLyricStoreKey(key, record.name), record);
+      if (track) {
+        assignLyricToTrack(track, record);
+        applyLyricsForCurrentTrack();
+      }
+      renderPlaylist();
+      lyricModal.classList.remove('open');
+      toastMsg('歌词已应用');
+    });
+
+    stage.addEventListener('dblclick', () => setImmersive(!app.classList.contains('immersive')));
+    window.addEventListener('mousemove', e => {
+      document.documentElement.style.setProperty('--mx', `${e.clientX / Math.max(1, innerWidth) * 100}%`);
+      document.documentElement.style.setProperty('--my', `${e.clientY / Math.max(1, innerHeight) * 100}%`);
+      const rect = stage.getBoundingClientRect();
+      document.documentElement.style.setProperty('--sx', `${Math.max(0, Math.min(100, (e.clientX - rect.left) / Math.max(1, rect.width) * 100))}%`);
+      document.documentElement.style.setProperty('--sy', `${Math.max(0, Math.min(100, (e.clientY - rect.top) / Math.max(1, rect.height) * 100))}%`);
+      resetIdle();
+    });
+    window.addEventListener('touchstart', resetIdle, { passive: true });
+
+    window.addEventListener('keydown', e => {
+      const tag = e.target && e.target.tagName;
+      if (['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+      if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+      if (e.key === 'ArrowRight') seekBy(5);
+      if (e.key === 'ArrowLeft') seekBy(-5);
+      if (e.key.toLowerCase() === 'n') nextTrack(true);
+      if (e.key.toLowerCase() === 'p') prevTrack();
+      if (e.key.toLowerCase() === 'm') muteBtn.click();
+      if (e.key.toLowerCase() === 'f') setImmersive(!app.classList.contains('immersive'));
+      if (e.key.toLowerCase() === 'l') lyricsToggle.click();
+      if (e.key.toLowerCase() === 'v') cycleVideoMode();
+      if (e.key.toLowerCase() === 'g') setMusicFocus(!app.classList.contains('music-focus'));
+      if (e.key === '[') nudgeOffset(-0.1);
+      if (e.key === ']') nudgeOffset(0.1);
+      if (e.key === 'Escape') { lyricModal.classList.remove('open'); aboutModal.classList.remove('open'); closeReleaseModal(onboardingModal); closeReleaseModal(releaseNotesModal); closeMoleGame(); panel.classList.remove('open'); setImmersive(false); setMusicFocus(false); app.classList.remove('idle'); updateToggles(); }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && (app.classList.contains('immersive') || app.classList.contains('music-focus'))) {
+        const wasMusicFocus = app.classList.contains('music-focus');
+        app.classList.remove('immersive');
+        app.classList.remove('music-focus');
+        state.musicFocus = false;
+        app.classList.remove('idle');
+        if (wasMusicFocus) restoreSelectedLyricMode();
+        updateToggles();
+        updateCdMini();
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      releaseWakeLock();
+      cancelAnimationFrame(state.raf);
+      state.tracks.forEach(t => URL.revokeObjectURL(t.url));
+    });
+
+
+    const contactEmail = document.getElementById('contactEmail');
+    if (contactEmail) {
+      const contactUser = 'mxyppsuc';
+      const contactDomain = 'foxmail.com';
+      contactEmail.textContent = `✉ ${contactUser}@${contactDomain}`;
+      contactEmail.addEventListener('click', () => {
+        window.location.href = `mailto:${contactUser}@${contactDomain}`;
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

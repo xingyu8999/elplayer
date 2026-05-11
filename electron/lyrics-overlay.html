@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Elplayer 桌面浮窗</title>
+  <link rel="stylesheet" href="lyrics-overlay.css" />
+</head>
+<body class="mode-lyrics">
+  <main class="overlay-shell" id="overlayShell">
+    <div class="overlay-window-tools" aria-label="桌面浮窗管理">
+      <button type="button" data-command="open-settings" title="打开桌面设置">⚙</button>
+      <button type="button" data-command="toggle-click-through" id="clickThroughButton" title="鼠标穿透">穿</button>
+      <button type="button" data-command="hide-overlay" title="隐藏浮窗">×</button>
+    </div>
+
+    <section class="lyric-panel" id="lyricPanel" aria-label="桌面歌词浮窗">
+      <p class="track-title draggable-text" id="trackTitle">Elplayer</p>
+      <h1 class="current-lyric draggable-text" id="currentLyric">等待播放媒体</h1>
+      <p class="next-lyric draggable-text" id="nextLyric">导入音乐或视频后，这里会显示桌面歌词。</p>
+      <div class="overlay-controls" id="lyricControls">
+        <button type="button" data-action="previous-track" title="上一首">‹</button>
+        <button type="button" data-action="toggle-play" class="main-play" id="playButton" title="播放/暂停">▶</button>
+        <button type="button" data-action="next-track" title="下一首">›</button>
+        <button type="button" data-command="toggle-mode" title="切换极简黑胶机模式">极简</button>
+        <button type="button" data-command="toggle-always-on-top" id="topButton" title="窗口置顶">置顶</button>
+      </div>
+    </section>
+
+    <section class="mini-panel" id="miniPanel" aria-label="极简黑胶机浮窗">
+      <button class="vinyl-button" type="button" data-action="toggle-play" title="播放/暂停">
+        <span class="vinyl-disc" aria-hidden="true"></span>
+        <span class="vinyl-core" aria-hidden="true"></span>
+      </button>
+      <div class="mini-info draggable-text">
+        <strong id="miniTitle">Elplayer</strong>
+        <span id="miniArtist">等待播放</span>
+      </div>
+      <div class="mini-controls">
+        <button type="button" data-action="previous-track" title="上一首">‹</button>
+        <button type="button" data-action="toggle-play" id="miniPlayButton" title="播放/暂停">▶</button>
+        <button type="button" data-action="next-track" title="下一首">›</button>
+        <button type="button" data-command="toggle-mode" title="切换桌面歌词模式">词</button>
+      </div>
+    </section>
+  </main>
+  <script src="lyrics-overlay.js"></script>
+</body>
+</html>

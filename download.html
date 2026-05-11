@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>下载 Elplayer v5.3.4</title>
+  <meta name="description" content="下载 Elplayer：支持本地音频、本地视频、LRC 歌词、SRT/VTT 字幕、桌面歌词浮窗和极简黑胶机模式的透明浮动歌词多媒体播放器。">
+  <link rel="icon" href="public/favicon.svg" type="image/svg+xml">
+  <style>
+    :root { color-scheme: dark; --bg:#050816; --card:rgba(255,255,255,.09); --line:rgba(255,255,255,.16); --text:rgba(255,255,255,.94); --soft:rgba(255,255,255,.66); --accent:#b9dcff; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text); background:radial-gradient(circle at 18% 12%, rgba(99,150,255,.34), transparent 32%), radial-gradient(circle at 80% 20%, rgba(255,121,199,.24), transparent 34%), linear-gradient(135deg,#0f172a,var(--bg)); }
+    main { width:min(1120px, calc(100% - 32px)); margin:0 auto; padding:44px 0 64px; }
+    .nav { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:18px; color:var(--soft); }
+    .nav a { color:var(--text); text-decoration:none; border:1px solid var(--line); border-radius:999px; padding:8px 12px; background:rgba(255,255,255,.07); }
+    .hero { display:grid; gap:18px; padding:34px; border:1px solid var(--line); border-radius:34px; background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.055)); box-shadow:0 36px 110px rgba(0,0,0,.38); backdrop-filter:blur(24px); }
+    .hero img { width:84px; height:84px; }
+    h1 { margin:0; font-size:clamp(42px,8vw,88px); line-height:.92; letter-spacing:-.08em; }
+    h2 { margin:0; font-size:24px; letter-spacing:-.04em; }
+    p { color:var(--soft); line-height:1.75; margin:0; }
+    .version { width:max-content; border:1px solid var(--line); border-radius:999px; padding:8px 12px; color:var(--accent); background:rgba(255,255,255,.07); }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:22px; }
+    .card { padding:22px; border:1px solid var(--line); border-radius:28px; background:var(--card); backdrop-filter:blur(20px); display:grid; gap:14px; }
+    .button { display:inline-flex; justify-content:center; align-items:center; min-height:44px; border-radius:999px; text-decoration:none; color:#08111f; background:rgba(255,255,255,.92); font-weight:700; padding:0 16px; }
+    .button.secondary { color:var(--text); background:rgba(255,255,255,.12); border:1px solid var(--line); }
+    .notes { margin-top:22px; padding:22px; border:1px solid var(--line); border-radius:28px; background:rgba(0,0,0,.18); }
+    ul { margin:10px 0 0; padding-left:20px; color:var(--soft); line-height:1.8; }
+    code { color:var(--accent); }
+    .muted { font-size:12px; color:rgba(255,255,255,.48); }
+    @media (max-width: 820px) { .grid { grid-template-columns:1fr; } .hero { padding:24px; } .nav { flex-direction:column; align-items:flex-start; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="nav">
+      <span>Elplayer · 透明浮动歌词多媒体播放器</span>
+      <a href="website.html">返回官网展示页</a>
+    </div>
+
+    <section class="hero">
+      <img src="public/logo.svg" alt="Elplayer logo">
+      <span class="version">Elplayer v5.3.4</span>
+      <h1>下载 Elplayer</h1>
+      <p>支持本地音频、本地视频、LRC 歌词、SRT/VTT 字幕、桌面歌词浮窗和极简黑胶机模式。如有任何下载问题，请联系作者mxyppsuc@foxmail.com</p>
+    </section>
+
+    <section class="grid" aria-label="下载选项">
+      <article class="card">
+        <h2>Windows x64</h2>
+        <p>推荐 Windows 10 / 11 x64 用户下载。默认构建文件名：</p>
+        <p><code>Elplayer-5.3.4-Setup-x64.exe</code></p>
+        <a class="button" href="https://github.com/xingyu8999/elplayer/releases/download/v5.3.4/Elplayer-5.3.4-Setup-x64.exe">下载 Windows x64</a>
+        <p class="muted">如果链接暂时 404，请联系作者邮箱或者Github。</p>
+      </article>
+      <article class="card">
+        <h2>macOS</h2>
+        <p>根据设备选择 Apple Silicon 或 Intel 版本。公开发布建议使用已签名和公证版本。</p>
+        <a class="button" href="https://github.com/xingyu8999/elplayer/releases/tag/v5.3.4">查看 macOS 下载</a>
+        <p class="muted"></p>
+      </article>
+      <article class="card">
+        <h2>Web / PWA</h2>
+        <p>不安装桌面版时，也可以直接使用更加方便洁净的Web 版。</p>
+        <a class="button secondary" href="index.html">打开 Web 版</a>
+      </article>
+    </section>
+
+    <section class="notes">
+      <h2>安装前说明</h2>
+      <ul>
+        <li>Windows 默认发布 x64 安装包，不再默认构建 ia32。</li>
+        <li>macOS 对外分发前需要完成 Developer ID 签名与 Apple 公证。</li>
+        <li>MKV / AVI 播放取决于系统和 Chromium 编码支持，推荐 MP4 / H.264 / AAC。</li>
+        <li>鼠标穿透开启后，可以从主窗口“桌面设置”、托盘菜单或快捷键恢复控制。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

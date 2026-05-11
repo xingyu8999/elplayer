@@ -1,0 +1,162 @@
+{
+  "name": "elplayer",
+  "version": "5.3.4",
+  "private": false,
+  "description": "中文优先的透明浮动歌词多媒体播放器，支持本地音频、视频、歌词、字幕、桌面歌词浮窗和极简黑胶机。",
+  "homepage": "https://maxingyu.cn",
+  "license": "MIT",
+  "author": "Maxingyu",
+  "type": "module",
+  "scripts": {
+    "dev": "python -m http.server 5173",
+    "start": "python -m http.server 5173",
+    "web:dev": "python -m http.server 5173",
+    "desktop": "electron .",
+    "desktop:dev": "electron . --dev",
+    "dist": "electron-builder",
+    "dist:dir": "electron-builder --dir",
+    "icons:build": "python scripts/generate-icons.py",
+    "release:check": "node scripts/check-release.cjs",
+    "dist:win": "electron-builder --win --x64",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "release:dry-run": "npm run release:check && npm run dist:dir",
+    "dist:win:x64": "electron-builder --win --x64",
+    "dist:win:ia32": "electron-builder --win --ia32",
+    "dist:win:all": "electron-builder --win --x64 --ia32",
+    "release:github": "powershell -ExecutionPolicy Bypass -File scripts/publish-github-release.ps1"
+  },
+  "keywords": [
+    "lyrics",
+    "floating-lyrics",
+    "music-player",
+    "video-player",
+    "lrc",
+    "subtitle",
+    "srt",
+    "vtt",
+    "desktop-lyrics",
+    "glassmorphism"
+  ],
+  "main": "electron/main.cjs",
+  "devDependencies": {
+    "electron": "^42.0.1",
+    "electron-builder": "^26.9.1",
+    "@electron/notarize": "^3.1.1"
+  },
+  "build": {
+    "appId": "cn.maxingyu.elplayer",
+    "productName": "Elplayer",
+    "copyright": "Copyright © 2026 Maxingyu",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "index.html",
+      "download.html",
+      "website.html",
+      "manifest.webmanifest",
+      "package.json",
+      "public/**",
+      "assets/**",
+      "docs/**",
+      "electron/**",
+      "build/**",
+      "!release/**",
+      "!scripts/**"
+    ],
+    "mac": {
+      "category": "public.app-category.music",
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-Setup-${arch}.${ext}",
+      "legalTrademarks": "Elplayer is a multimedia lyrics player by Maxingyu.",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": [
+        "AppImage"
+      ],
+      "category": "AudioVideo",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "icon": "public/icons/app-icon.png",
+    "asar": true,
+    "extraMetadata": {
+      "name": "elplayer",
+      "version": "5.3.4"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "xingyu8999",
+        "repo": "elplayer"
+      }
+    ],
+    "dmg": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "sign": false,
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Elplayer",
+      "uninstallDisplayName": "Elplayer",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "menuCategory": false
+    },
+    "afterSign": "scripts/notarize.cjs"
+  }
+}

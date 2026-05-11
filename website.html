@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Elplayer 官网展示页 · v5.3.4</title>
+  <meta name="description" content="Elplayer 是一个支持本地音频、视频、歌词、字幕和桌面歌词浮窗的透明浮动歌词多媒体播放器。">
+  <link rel="icon" href="public/favicon.svg" type="image/svg+xml">
+  <style>
+    :root { color-scheme: dark; --bg:#050816; --line:rgba(255,255,255,.15); --text:rgba(255,255,255,.94); --soft:rgba(255,255,255,.66); --card:rgba(255,255,255,.08); --accent:#b9dcff; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--text); background:radial-gradient(circle at 22% 12%, rgba(107,157,255,.35), transparent 32%), radial-gradient(circle at 82% 22%, rgba(255,134,208,.24), transparent 34%), linear-gradient(135deg,#111827,var(--bg)); }
+    main { width:min(1180px, calc(100% - 32px)); margin:0 auto; padding:34px 0 70px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:18px; margin-bottom:24px; }
+    .brand { display:flex; align-items:center; gap:12px; color:var(--soft); }
+    .brand img { width:42px; height:42px; }
+    nav { display:flex; gap:10px; flex-wrap:wrap; }
+    a { color:var(--text); }
+    nav a, .button { text-decoration:none; border:1px solid var(--line); border-radius:999px; padding:10px 14px; background:rgba(255,255,255,.08); }
+    .hero { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(340px,.95fr); gap:24px; align-items:center; padding:34px; border:1px solid var(--line); border-radius:36px; background:linear-gradient(180deg,rgba(255,255,255,.13),rgba(255,255,255,.055)); box-shadow:0 36px 120px rgba(0,0,0,.38); backdrop-filter:blur(24px); }
+    h1 { margin:0; font-size:clamp(46px,8vw,92px); line-height:.92; letter-spacing:-.08em; }
+    h2 { margin:0 0 10px; font-size:30px; letter-spacing:-.045em; }
+    p { margin:0; color:var(--soft); line-height:1.75; }
+    .hero p { margin-top:16px; max-width:620px; }
+    .actions { display:flex; gap:12px; flex-wrap:wrap; margin-top:22px; }
+    .primary { background:rgba(255,255,255,.92); color:#07111f; font-weight:800; }
+    .preview { width:100%; border-radius:28px; border:1px solid var(--line); box-shadow:0 22px 80px rgba(0,0,0,.34); }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:24px; }
+    .card { padding:22px; border:1px solid var(--line); border-radius:28px; background:var(--card); backdrop-filter:blur(20px); }
+    .shots { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:24px; }
+    .shots img { width:100%; border-radius:24px; border:1px solid var(--line); }
+    .section { margin-top:34px; }
+    .tag { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:8px 12px; color:var(--accent); background:rgba(255,255,255,.07); margin-bottom:14px; }
+    @media (max-width: 900px) { .hero { grid-template-columns:1fr; padding:24px; } .grid, .shots { grid-template-columns:1fr; } header { flex-direction:column; align-items:flex-start; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="brand"><img src="public/logo.svg" alt="Elplayer logo"><span>Elplayer v5.3.4</span></div>
+      <nav><a href="download.html">下载</a><a href="index.html">Web 版</a><a href="https://github.com/xingyu8999/elplayer">GitHub</a></nav>
+    </header>
+
+    <section class="hero">
+      <div>
+        <span class="tag">透明浮动歌词多媒体播放器</span>
+        <h1>让歌词浮起来</h1>
+        <p>Elplayer 支持本地音频、本地视频、LRC 歌词、SRT/VTT 字幕、桌面歌词浮窗和极简黑胶机模式。它适合听歌、看 MV、播放课程视频、展示字幕，也适合嵌入个人网站。</p>
+        <div class="actions"><a class="button primary" href="download.html">下载桌面版</a><a class="button" href="index.html">打开 Web 版</a></div>
+      </div>
+      <img class="preview" src="public/release/github-release-cover.png" alt="Elplayer 发布封面">
+    </section>
+
+    <section class="grid section">
+      <article class="card"><h2>桌面歌词</h2><p>透明浮窗、窗口置顶、鼠标穿透、窗口锁定和可视化桌面设置。</p></article>
+      <article class="card"><h2>极简黑胶机</h2><p>隐藏歌词，只保留播放动效、歌名、歌手和基础播放控制。</p></article>
+      <article class="card"><h2>视频字幕</h2><p>支持 SRT/VTT 字幕和 LRC 浮动歌词，兼顾 MV、电影片段和课程视频。</p></article>
+    </section>
+
+    <section class="section">
+      <span class="tag">界面预览</span>
+      <div class="shots">
+        <img src="public/release/release-desktop-overlay.png" alt="桌面歌词浮窗">
+        <img src="public/release/release-mini-vinyl.png" alt="极简黑胶机">
+        <img src="public/release/release-settings-panel.png" alt="桌面设置面板">
+        <img src="public/release/release-mobile-pwa.png" alt="移动端 PWA 预览">
+      </div>
+    </section>
+  </main>
+</body>
+</html>
